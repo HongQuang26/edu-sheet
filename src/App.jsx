@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-// ⚠️ QUAN TRỌNG: KHI CHẠY TRÊN MÁY TÍNH CỦA BẠN (VS CODE), HÃY XÓA DẤU "//" Ở ĐẦU DÒNG DƯỚI ĐÂY:
-import { createClient } from '@supabase/supabase-js';
+// Sử dụng link CDN để đảm bảo chạy mượt mà trên mọi môi trường
+import { createClient } from 'https://esm.sh/@supabase/supabase-js';
 
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
@@ -11,26 +11,7 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// ĐOẠN MÔ PHỎNG (CHỈ DÙNG ĐỂ XEM TRƯỚC TRÊN TRÌNH DUYỆT NÀY)
-// KHI CHẠY THẬT TRÊN MÁY TÍNH CỦA BẠN, HÃY XÓA TOÀN BỘ ĐOẠN TỪ ĐÂY...
-const createClient = (url, key) => ({
-  auth: {
-    getSession: () => Promise.resolve({ data: { session: null } }),
-    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-    signInWithPassword: () => Promise.resolve({ error: new Error('Đây là bản xem trước. Hãy chạy trên máy tính để đăng nhập thật!') }),
-    signUp: () => Promise.resolve({ data: { user: { id: '1' } }, error: null }),
-    signOut: () => Promise.resolve()
-  },
-  from: () => ({
-    select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null }) }), then: (cb) => cb({ data: [] }) }),
-    insert: () => Promise.resolve({ error: null })
-  })
-});
-// ... ĐẾN ĐÂY NHÉ!
-// ==========================================
-
-// ==========================================
-// ⚠️ DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO ĐÂY
+// ⚠️ BƯỚC QUAN TRỌNG: DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO 2 DÒNG DƯỚI ĐÂY
 // ==========================================
 const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co/rest/v1/';
 const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
@@ -44,7 +25,7 @@ export default function App() {
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedExam, setSelectedExam] = useState(null);
   
-  // Dữ liệu toàn cục
+  // Dữ liệu toàn cục của ứng dụng
   const [classes, setClasses] = useState([]);
   const [exams, setExams] = useState([]);
   const [enrollments, setEnrollments] = useState([]); 
@@ -53,8 +34,9 @@ export default function App() {
   
   const [authMode, setAuthMode] = useState('login');
   const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', role: 'student' });
-  const [isLoading, setIsLoading] = useState(false); // Đặt là false ở đây để xem trước UI
+  const [isLoading, setIsLoading] = useState(true);
 
+  // 1. KIỂM TRA ĐĂNG NHẬP (Nhờ bảo vệ Supabase kiểm tra thẻ)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -64,8 +46,9 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) fetchUserProfile(session.user.id);
-      else {
+      if (session) {
+        fetchUserProfile(session.user.id);
+      } else {
         setCurrentUser(null);
         setCurrentView('login');
         setIsLoading(false);
@@ -75,13 +58,14 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // 2. LẤY HỒ SƠ TỪ TỦ DỮ LIỆU
   const fetchUserProfile = async (userId) => {
     setIsLoading(true);
     const { data } = await supabase.from('edu_users').select('*').eq('id', userId).single();
     if (data) {
       setCurrentUser(data);
       setCurrentView('dashboard');
-      fetchData();
+      fetchData(); // Tải các lớp học, bài thi...
     }
     setIsLoading(false);
   };
@@ -94,6 +78,7 @@ export default function App() {
     supabase.from('edu_users').select('*').then(({data}) => data && setAllUsers(data));
   };
 
+  // 3. XỬ LÝ ĐĂNG NHẬP / ĐĂNG KÝ
   const handleAuth = async () => {
     if (!authForm.email || !authForm.password) return alert('Vui lòng điền đủ Email và Mật khẩu!');
     setIsLoading(true);
@@ -110,7 +95,10 @@ export default function App() {
 
         if (authData.user) {
           const { error: dbError } = await supabase.from('edu_users').insert([{
-            id: authData.user.id, username: authForm.email, name: authForm.name, role: authForm.role
+            id: authData.user.id, 
+            username: authForm.email, 
+            name: authForm.name, 
+            role: authForm.role
           }]);
           if (dbError) throw dbError;
         }
@@ -133,16 +121,22 @@ export default function App() {
     setIsLoading(false);
   };
 
+  // Chuyển trang mượt mà
   const navigate = (view, data = {}) => {
     if (data.cls) setSelectedClass(data.cls);
     if (data.exam) setSelectedExam(data.exam);
     setCurrentView(view);
   };
 
+  // NẾU ĐANG TẢI...
   if (isLoading) return <LoadingScreen />;
 
-  if (!session || !currentUser) return <AuthScreen authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} handleAuth={handleAuth} />;
+  // NẾU CHƯA ĐĂNG NHẬP...
+  if (!session || !currentUser) {
+    return <AuthScreen authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} handleAuth={handleAuth} />;
+  }
 
+  // NẾU ĐÃ ĐĂNG NHẬP, HIỂN THỊ GIAO DIỆN CHÍNH
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shrink-0 shadow-sm no-print animate-fade-in-down">
@@ -154,7 +148,7 @@ export default function App() {
             <span className="text-sm font-black text-gray-600 bg-gray-100 px-4 py-2 rounded-xl hidden sm:inline-block border border-gray-200">
               {currentUser.name} ({currentUser.role === 'teacher' ? 'Giáo viên' : 'Học sinh'})
             </span>
-            <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-xl hover:bg-red-50 border border-transparent hover:border-red-100">
+            <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-xl hover:bg-red-50 border border-transparent hover:border-red-100" title="Đăng xuất">
               <LogOut size={20} />
             </button>
           </div>
@@ -165,11 +159,11 @@ export default function App() {
         {currentView === 'dashboard' && <Dashboard currentUser={currentUser} classes={classes} setClasses={setClasses} enrollments={enrollments} setEnrollments={setEnrollments} navigate={navigate} />}
         {currentView === 'class' && <ClassDetail currentUser={currentUser} cls={selectedClass} exams={exams.filter(e => e.classId === selectedClass.id)} enrollments={enrollments} allUsers={allUsers} results={results} navigate={navigate} />}
         {currentView === 'create_exam' && <ExamCreator cls={selectedClass} navigate={navigate} setExams={setExams} exams={exams} />}
-        {currentView === 'exam_taker' && <ExamTaker exam={selectedExam} navigate={navigate} currentUser={currentUser} resultsState={results} setResultsState={setResults} />}
+        {currentView === 'exam_taker' && <ExamTaker exam={selectedExam} navigate={navigate} currentUser={currentUser} resultsState={results} setResultsState={setResults} supabase={supabase} />}
         {currentView === 'exam_result' && <ExamResult exam={selectedExam} results={selectedExam.results} navigate={navigate} currentUser={currentUser} />}
       </main>
 
-      {/* --- BỘ HIỆU ỨNG ANIMATION --- */}
+      {/* --- BỘ HIỆU ỨNG ANIMATION XINH XẮN VÀ MƯỢT MÀ --- */}
       <style>{`
         @keyframes fadeSlideUp {
           from { opacity: 0; transform: translateY(20px); }
@@ -184,16 +178,11 @@ export default function App() {
           100% { opacity: 1; transform: scale(1); }
         }
         
-        .page-transition {
-          animation: fadeSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        .animate-fade-in-down {
-          animation: fadeInDown 0.4s ease-out forwards;
-        }
-        .animate-pop {
-          animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
+        .page-transition { animation: fadeSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-fade-in-down { animation: fadeInDown 0.4s ease-out forwards; }
+        .animate-pop { animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
+        /* Tính năng ảo thuật: Dọn màn hình khi bấm In/Xuất PDF */
         @media print {
           body * { visibility: hidden; }
           .print-section, .print-section * { visibility: visible; }
@@ -207,7 +196,7 @@ export default function App() {
   );
 }
 
-// ================= COMPONENT CHỨC NĂNG =================
+// ================= CÁC COMPONENT GIAO DIỆN CON =================
 
 function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollments, navigate }) {
   const [joinCode, setJoinCode] = useState('');
@@ -215,6 +204,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
   const [showCreateClass, setShowCreateClass] = useState(false);
   const [newClassName, setNewClassName] = useState('');
 
+  // Tự động tham gia nếu bấm từ link chia sẻ
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const codeFromLink = params.get('join');
@@ -224,6 +214,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
     }
   }, []);
 
+  // Giáo viên thấy lớp mình tạo. Học sinh thấy lớp ĐÃ tham gia
   const myClasses = currentUser.role === 'teacher' 
     ? classes.filter(c => c.teacherId === currentUser.id) 
     : classes.filter(c => enrollments.some(e => e.class_id === c.id && e.student_id === currentUser.id));
@@ -557,11 +548,12 @@ function ExamCreator({ cls, navigate, setExams, exams }) {
   );
 }
 
-function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState }) {
+function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState, supabase }) {
   const [answers, setAnswers] = useState({});
   const [cheatWarning, setCheatWarning] = useState(false);
   const [cheatCount, setCheatCount] = useState(0);
 
+  // Chống gian lận: rời khỏi tab là bị cảnh báo
   useEffect(() => {
     const handleVis = () => { if (document.hidden) { setCheatWarning(true); setCheatCount(prev => prev + 1); } };
     document.addEventListener("visibilitychange", handleVis);
@@ -584,7 +576,7 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState 
 
     const results = { score, total: questionsList.length, details, cheatCount };
     
-    // Lưu kết quả (Chỉ lưu nếu là HỌC SINH làm, Giáo viên test thì không lưu)
+    // NẾU LÀ HỌC SINH -> LƯU ĐIỂM
     if (currentUser.role === 'student') {
       const newResult = {
         id: 'res_' + Date.now(),
@@ -600,6 +592,7 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState 
       setResultsState([...resultsState, newResult]);
     }
 
+    // Chuyển sang trang xem kết quả
     navigate('exam_result', { exam: { ...exam, results } });
   };
 
