@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js'; 
+import { createClient } from '@supabase/supabase-js';
+
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
   CheckCircle, XCircle, PlayCircle, AlertTriangle, 
@@ -8,7 +9,7 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// ⚠️ BẠN HÃY DÁN URL VÀ KEY SUPABASE VÀO 2 DÒNG DƯỚI ĐÂY
+// ⚠️ BƯỚC CUỐI CÙNG: DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO ĐÂY
 // ==========================================
 const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
@@ -57,11 +58,11 @@ export default function App() {
 
   // 2. LẤY HỒ SƠ & TẢI DỮ LIỆU
   const fetchUserProfile = async (userId) => {
-    setIsLoading(true);
+    // Tải dữ liệu ngầm, không hiện xoay Loading để tránh giật màn hình khi chuyển tab
     const { data } = await supabase.from('edu_users').select('*').eq('id', userId).single();
     if (data) {
       setCurrentUser(data);
-      setCurrentView('dashboard');
+      setCurrentView(prevView => prevView === 'login' ? 'dashboard' : prevView);
       fetchData(); 
     }
     setIsLoading(false);
@@ -126,7 +127,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shrink-0 shadow-sm no-print animate-fade-in-down">
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40 shrink-0 shadow-sm no-print animate-fade-in-down">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 font-black text-xl cursor-pointer tracking-tight hover:scale-105 transition-transform" onClick={() => navigate('dashboard')}>
             <Layout size={24} /> EduSheet
@@ -211,7 +212,6 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
   const handleDeleteClass = async (e, classObj) => {
     e.stopPropagation(); 
     if(!window.confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn lớp "${classObj.name}" không?\nMọi dữ liệu liên quan sẽ bị ẩn đi.`)) return;
-
     await supabase.from('edu_classes').delete().eq('id', classObj.id);
     setClasses(prev => prev.filter(c => c.id !== classObj.id));
     alert('Đã xóa lớp thành công!');
@@ -309,7 +309,6 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
 
   const joinLink = `${window.location.origin}${window.location.pathname}?join=${cls.code}`;
   const classStudents = enrollments.filter(e => e.class_id === cls.id).map(e => allUsers.find(u => u.id === e.student_id)).filter(Boolean); 
-
   const visibleExams = exams.filter(e => !e.is_hidden);
 
   const copyLink = () => { navigator.clipboard.writeText(joinLink); alert('Đã copy link mời tham gia lớp!'); };
@@ -391,6 +390,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
           </div>
         )}
 
+        {/* TAB BÀI TẬP */}
         {activeTab === 'exams' && (
           <div className="space-y-6 no-print animate-fade-in-down">
             {currentUser.role === 'teacher' && (
@@ -464,6 +464,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
           </div>
         )}
 
+        {/* TAB BẢNG ĐIỂM */}
         {activeTab === 'students' && currentUser.role === 'teacher' && (
           <div className="space-y-6 animate-fade-in-down">
             <div className="flex justify-between items-center no-print">
@@ -674,14 +675,15 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
   const [cheatCount, setCheatCount] = useState(0);
   const isExamMode = exam.exam_type === 'exam'; 
 
-  // Tính năng Auto-Save Lưu Nháp
+  // Auto-save: Tải nháp khi mới vào
   useEffect(() => {
-    if (currentUser.role === 'student') {
-      const savedDraft = localStorage.getItem(`draft_${exam.id}_${currentUser.id}`);
-      if (savedDraft) setAnswers(JSON.parse(savedDraft));
+    if (currentUser?.role === 'student') {
+      const draft = localStorage.getItem(`draft_${exam.id}_${currentUser.id}`);
+      if (draft) setAnswers(JSON.parse(draft));
     }
-  }, [exam.id, currentUser.id, currentUser.role]);
+  }, []);
 
+  // Chống gian lận
   useEffect(() => {
     if (isExamMode) {
       const handleVis = () => { if (document.hidden) { setCheatWarning(true); setCheatCount(prev => prev + 1); } };
@@ -691,12 +693,12 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
     }
   }, [isExamMode]);
 
+  // Click chọn & Auto-save
   const handleSelect = (qId, val) => {
-    const newAnswers = { ...answers, [qId]: val };
-    setAnswers(newAnswers);
-    // Tự động lưu nháp
-    if (currentUser.role === 'student') {
-      localStorage.setItem(`draft_${exam.id}_${currentUser.id}`, JSON.stringify(newAnswers));
+    const newAns = { ...answers, [qId]: val };
+    setAnswers(newAns);
+    if (currentUser?.role === 'student') {
+      localStorage.setItem(`draft_${exam.id}_${currentUser.id}`, JSON.stringify(newAns));
     }
   };
 
@@ -725,7 +727,7 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
       await supabase.from('edu_results').insert([newResult]);
       setResultsState([...resultsState, newResult]);
       
-      // Xóa bản nháp sau khi nộp
+      // Xóa nháp sau khi nộp thành công
       try { localStorage.removeItem(`draft_${exam.id}_${currentUser.id}`); } catch(e){}
     }
 
@@ -824,34 +826,24 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
 function ExamResult({ exam, results, navigate, currentUser }) {
   const [playingVideo, setPlayingVideo] = useState(null);
 
-  // Bộ lọc thông minh tự động ép link thành chuẩn nhúng
+  // Bộ lọc thông minh tự chuyển đổi link Youtube sang định dạng chạy nhúng
   const getEmbedUrl = (url) => {
     if (!url) return '';
-    let embedUrl = url;
-    if (url.includes('youtube.com/watch?v=')) {
-      embedUrl = url.replace('youtube.com/watch?v=', 'youtube.com/embed/').split('&')[0];
-    } else if (url.includes('youtu.be/')) {
-      embedUrl = url.replace('youtu.be/', 'youtube.com/embed/').split('?')[0];
-    }
-    return embedUrl;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}?autoplay=1` : url;
   };
 
   return (
     <>
-      {/* CỬA SỔ PHÁT VIDEO CHỮA BÀI (IN-APP PLAYER) */}
+      {/* Cửa sổ chiếu Video (Rạp chiếu phim In-app) */}
       {playingVideo && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[200] p-4 backdrop-blur-md transition-opacity">
-          <button onClick={() => setPlayingVideo(null)} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors bg-white/10 p-2 rounded-full hover:bg-red-500" title="Đóng Video">
-            <XCircle size={32} />
-          </button>
-          <div className="w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl animate-pop border border-white/10">
-            <iframe 
-              src={getEmbedUrl(playingVideo)} 
-              className="w-full h-full" 
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-              allowFullScreen
-              title="Video Chữa Bài"
-            />
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-4 backdrop-blur-sm transition-opacity">
+          <div className="bg-black rounded-3xl w-full max-w-4xl shadow-2xl animate-pop overflow-hidden relative border border-gray-800">
+            <button onClick={() => setPlayingVideo(null)} className="absolute top-4 right-4 text-white hover:text-red-500 z-10 bg-black/50 p-2 rounded-full transition-colors"><XCircle size={24} /></button>
+            <div className="aspect-video w-full bg-gray-900">
+              <iframe src={getEmbedUrl(playingVideo)} className="w-full h-full border-0" allow="autoplay; fullscreen" allowFullScreen title="Video Chữa Bài"></iframe>
+            </div>
           </div>
         </div>
       )}
@@ -894,11 +886,11 @@ function ExamResult({ exam, results, navigate, currentUser }) {
                 </div>
 
                 {q.videoUrl ? (
-                  <button onClick={() => setPlayingVideo(q.videoUrl)} className="mt-auto inline-flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-5 py-3 rounded-xl text-sm font-black hover:bg-blue-600 hover:text-white transition-colors duration-300">
+                  <button onClick={() => setPlayingVideo(q.videoUrl)} className="mt-auto flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-5 py-3 rounded-xl text-sm font-black hover:bg-blue-600 hover:text-white transition-colors duration-300 w-full">
                     <PlayCircle size={20} /> XEM VIDEO CHỮA BÀI
                   </button>
                 ) : (
-                  <div className="mt-auto text-center text-xs text-gray-400 font-bold py-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="mt-auto text-center text-xs text-gray-400 font-bold py-3 bg-gray-50 rounded-xl border border-gray-100 w-full">
                     KHÔNG CÓ VIDEO
                   </div>
                 )}
