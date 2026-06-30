@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-// ⚠️ QUAN TRỌNG: KHI CHẠY TRÊN MÁY TÍNH CỦA BẠN (VS CODE), HÃY XÓA DẤU "//" Ở ĐẦU DÒNG DƯỚI ĐÂY VÀ XÓA ĐOẠN MÔ PHỎNG NHÉ:
-// import { createClient } from '@supabase/supabase-js';
-
+import { createClient } from '@supabase/supabase-js'; // BẢN CHÍNH THỨC 100%
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
   CheckCircle, XCircle, PlayCircle, AlertTriangle, 
@@ -11,37 +8,10 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// ĐOẠN MÔ PHỎNG (DÀNH CHO MÔI TRƯỜNG XEM TRƯỚC ĐỂ KHÔNG BỊ LỖI)
-// KHI CHẠY THẬT TRÊN MÁY TÍNH CỦA BẠN, HÃY XÓA TOÀN BỘ ĐOẠN TỪ ĐÂY...
-const createClient = (url, key) => ({
-  auth: {
-    getSession: () => Promise.resolve({ data: { session: null } }),
-    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-    signInWithPassword: () => Promise.resolve({ error: new Error('Đây là bản xem trước. Hãy chạy trên máy tính để đăng nhập thật!') }),
-    signUp: () => Promise.resolve({ error: new Error('Đây là bản xem trước. Hãy chạy trên máy tính để đăng ký thật!') }),
-    signOut: () => Promise.resolve()
-  },
-  from: () => ({
-    select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null }) }), then: (cb) => { cb({ data: [] }); return Promise.resolve({ data: [] }); } }),
-    insert: () => Promise.resolve({ error: null }),
-    update: () => ({ eq: () => Promise.resolve({ error: null }) })
-  }),
-  storage: {
-    from: () => ({
-      upload: () => Promise.resolve({ error: null }),
-      getPublicUrl: () => ({ data: { publicUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' } }),
-      remove: () => Promise.resolve({ error: null })
-    })
-  }
-});
-// ... ĐẾN ĐÂY NHÉ!
+// ⚠️ BẠN HÃY DÁN URL VÀ KEY SUPABASE VÀO 2 DÒNG DƯỚI ĐÂY
 // ==========================================
-
-// ==========================================
-// ⚠️ DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO 2 DÒNG DƯỚI ĐÂY
-// ==========================================
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -61,7 +31,7 @@ export default function App() {
   
   const [authMode, setAuthMode] = useState('login');
   const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', role: 'student' });
-  const [isLoading, setIsLoading] = useState(false); // Ở bản xem trước đặt là false
+  const [isLoading, setIsLoading] = useState(true);
 
   // 1. KIỂM TRA ĐĂNG NHẬP
   useEffect(() => {
@@ -240,7 +210,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
 
   return (
     <div className="space-y-6 page-transition">
-      {/* Giao diện tạo/join lớp (giữ nguyên) */}
+      {/* Giao diện tạo/join lớp */}
       {showCreateClass && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-pop">
