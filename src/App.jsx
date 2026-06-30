@@ -1,20 +1,47 @@
 import React, { useState, useEffect } from 'react';
 
-// BẢN CHÍNH THỨC 100%: Sử dụng thư viện kết nối thật
-import { createClient } from '@supabase/supabase-js';
+// ⚠️ QUAN TRỌNG: KHI CHẠY TRÊN MÁY TÍNH CỦA BẠN (VS CODE), HÃY XÓA DẤU "//" Ở ĐẦU DÒNG DƯỚI ĐÂY VÀ XÓA ĐOẠN MÔ PHỎNG NHÉ:
+// import { createClient } from '@supabase/supabase-js';
 
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
   CheckCircle, XCircle, PlayCircle, AlertTriangle, 
   ChevronRight, ArrowLeft, Eye, Layout, Trash2, Save, 
-  Link as LinkIcon, Download 
+  Link as LinkIcon, Download, Clock, Calendar 
 } from 'lucide-react';
+
+// ==========================================
+// ĐOẠN MÔ PHỎNG (DÀNH CHO MÔI TRƯỜNG XEM TRƯỚC ĐỂ KHÔNG BỊ LỖI)
+// KHI CHẠY THẬT TRÊN MÁY TÍNH CỦA BẠN, HÃY XÓA TOÀN BỘ ĐOẠN TỪ ĐÂY...
+const createClient = (url, key) => ({
+  auth: {
+    getSession: () => Promise.resolve({ data: { session: null } }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    signInWithPassword: () => Promise.resolve({ error: new Error('Đây là bản xem trước. Hãy chạy trên máy tính để đăng nhập thật!') }),
+    signUp: () => Promise.resolve({ error: new Error('Đây là bản xem trước. Hãy chạy trên máy tính để đăng ký thật!') }),
+    signOut: () => Promise.resolve()
+  },
+  from: () => ({
+    select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null }) }), then: (cb) => { cb({ data: [] }); return Promise.resolve({ data: [] }); } }),
+    insert: () => Promise.resolve({ error: null }),
+    update: () => ({ eq: () => Promise.resolve({ error: null }) })
+  }),
+  storage: {
+    from: () => ({
+      upload: () => Promise.resolve({ error: null }),
+      getPublicUrl: () => ({ data: { publicUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' } }),
+      remove: () => Promise.resolve({ error: null })
+    })
+  }
+});
+// ... ĐẾN ĐÂY NHÉ!
+// ==========================================
 
 // ==========================================
 // ⚠️ DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO 2 DÒNG DƯỚI ĐÂY
 // ==========================================
-const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -25,7 +52,7 @@ export default function App() {
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedExam, setSelectedExam] = useState(null);
   
-  // Dữ liệu toàn cục của ứng dụng
+  // Dữ liệu toàn cục
   const [classes, setClasses] = useState([]);
   const [exams, setExams] = useState([]);
   const [enrollments, setEnrollments] = useState([]); 
@@ -34,9 +61,9 @@ export default function App() {
   
   const [authMode, setAuthMode] = useState('login');
   const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', role: 'student' });
-  const [isLoading, setIsLoading] = useState(false); // Sửa thành false để vào luôn UI trên bản xem trước
+  const [isLoading, setIsLoading] = useState(false); // Ở bản xem trước đặt là false
 
-  // 1. KIỂM TRA ĐĂNG NHẬP (Nhờ bảo vệ Supabase kiểm tra thẻ)
+  // 1. KIỂM TRA ĐĂNG NHẬP
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -58,14 +85,14 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. LẤY HỒ SƠ TỪ TỦ DỮ LIỆU
+  // 2. LẤY HỒ SƠ & TẢI DỮ LIỆU
   const fetchUserProfile = async (userId) => {
     setIsLoading(true);
     const { data } = await supabase.from('edu_users').select('*').eq('id', userId).single();
     if (data) {
       setCurrentUser(data);
       setCurrentView('dashboard');
-      fetchData(); // Tải các lớp học, bài thi...
+      fetchData(); 
     }
     setIsLoading(false);
   };
@@ -95,10 +122,7 @@ export default function App() {
 
         if (authData.user) {
           const { error: dbError } = await supabase.from('edu_users').insert([{
-            id: authData.user.id, 
-            username: authForm.email, 
-            name: authForm.name, 
-            role: authForm.role
+            id: authData.user.id, username: authForm.email, name: authForm.name, role: authForm.role
           }]);
           if (dbError) throw dbError;
         }
@@ -121,29 +145,15 @@ export default function App() {
     setIsLoading(false);
   };
 
-  // Chuyển trang mượt mà
   const navigate = (view, data = {}) => {
     if (data.cls) setSelectedClass(data.cls);
     if (data.exam) setSelectedExam(data.exam);
     setCurrentView(view);
   };
 
-  // Hỗ trợ xem nhanh giao diện trên môi trường xem trước
-  const bypassLoginForDemo = () => {
-    setCurrentUser({ id: 'demo_t1', name: 'Giáo viên Demo', role: 'teacher' });
-    setSession(true);
-    setCurrentView('dashboard');
-  };
-
-  // NẾU ĐANG TẢI...
   if (isLoading) return <LoadingScreen />;
+  if (!session || !currentUser) return <AuthScreen authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} handleAuth={handleAuth} />;
 
-  // NẾU CHƯA ĐĂNG NHẬP...
-  if (!session || !currentUser) {
-    return <AuthScreen authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} handleAuth={handleAuth} bypassLoginForDemo={bypassLoginForDemo} />;
-  }
-
-  // NẾU ĐÃ ĐĂNG NHẬP, HIỂN THỊ GIAO DIỆN CHÍNH
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shrink-0 shadow-sm no-print animate-fade-in-down">
@@ -163,40 +173,22 @@ export default function App() {
       </header>
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8 relative">
-        {currentView === 'dashboard' && <Dashboard currentUser={currentUser} classes={classes} setClasses={setClasses} enrollments={enrollments} setEnrollments={setEnrollments} navigate={navigate} />}
-        {currentView === 'class' && <ClassDetail currentUser={currentUser} cls={selectedClass} exams={exams.filter(e => e.classId === selectedClass.id)} enrollments={enrollments} allUsers={allUsers} results={results} navigate={navigate} />}
+        {currentView === 'dashboard' && <Dashboard currentUser={currentUser} classes={classes} setClasses={setClasses} enrollments={enrollments} setEnrollments={setEnrollments} navigate={navigate} supabase={supabase} />}
+        {currentView === 'class' && <ClassDetail currentUser={currentUser} cls={selectedClass} exams={exams.filter(e => e.classId === selectedClass.id)} enrollments={enrollments} allUsers={allUsers} results={results} navigate={navigate} setExams={setExams} supabase={supabase} />}
         {currentView === 'create_exam' && <ExamCreator cls={selectedClass} navigate={navigate} setExams={setExams} exams={exams} supabase={supabase} />}
         {currentView === 'exam_taker' && <ExamTaker exam={selectedExam} navigate={navigate} currentUser={currentUser} resultsState={results} setResultsState={setResults} supabase={supabase} />}
         {currentView === 'exam_result' && <ExamResult exam={selectedExam} results={selectedExam.results} navigate={navigate} currentUser={currentUser} />}
       </main>
 
-      {/* --- BỘ HIỆU ỨNG ANIMATION XINH XẮN VÀ MƯỢT MÀ --- */}
+      {/* CSS Hiệu ứng */}
       <style>{`
-        @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeInDown {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes popIn {
-          0% { opacity: 0; transform: scale(0.95); }
-          100% { opacity: 1; transform: scale(1); }
-        }
-        
+        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
         .page-transition { animation: fadeSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .animate-fade-in-down { animation: fadeInDown 0.4s ease-out forwards; }
         .animate-pop { animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
-        /* Tính năng ảo thuật: Dọn màn hình khi bấm In/Xuất PDF */
-        @media print {
-          body * { visibility: hidden; }
-          .print-section, .print-section * { visibility: visible; }
-          .print-section { position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
-          .no-print { display: none !important; }
-        }
-        
+        @media print { body * { visibility: hidden; } .print-section, .print-section * { visibility: visible; } .print-section { position: absolute; left: 0; top: 0; width: 100%; padding: 0; } .no-print { display: none !important; } }
         html { scroll-behavior: smooth; }
       `}</style>
     </div>
@@ -205,13 +197,12 @@ export default function App() {
 
 // ================= CÁC COMPONENT GIAO DIỆN CON =================
 
-function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollments, navigate }) {
+function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollments, navigate, supabase }) {
   const [joinCode, setJoinCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [showCreateClass, setShowCreateClass] = useState(false);
   const [newClassName, setNewClassName] = useState('');
 
-  // Tự động tham gia nếu bấm từ link chia sẻ
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const codeFromLink = params.get('join');
@@ -221,7 +212,6 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
     }
   }, []);
 
-  // Giáo viên thấy lớp mình tạo. Học sinh thấy lớp ĐÃ tham gia
   const myClasses = currentUser.role === 'teacher' 
     ? classes.filter(c => c.teacherId === currentUser.id) 
     : classes.filter(c => enrollments.some(e => e.class_id === c.id && e.student_id === currentUser.id));
@@ -230,7 +220,6 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
     if (!newClassName.trim()) return alert('Vui lòng nhập tên lớp!');
     const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     const newClass = { id: 'c_' + Date.now(), name: newClassName, code: newCode, teacherId: currentUser.id };
-    
     await supabase.from('edu_classes').insert([newClass]);
     setClasses([...classes, newClass]);
     setShowCreateClass(false);
@@ -240,12 +229,8 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
   const handleJoinClass = async (codeToJoin = joinCode) => {
     const found = classes.find(c => c.code === codeToJoin);
     if (!found) return alert('Mã lớp không chính xác!');
-
     const alreadyJoined = enrollments.some(e => e.class_id === found.id && e.student_id === currentUser.id);
-    if (alreadyJoined) {
-      navigate('class', { cls: found });
-      return;
-    }
+    if (alreadyJoined) { navigate('class', { cls: found }); return; }
 
     const newEnroll = { id: 'en_' + Date.now(), class_id: found.id, student_id: currentUser.id };
     await supabase.from('edu_enrollments').insert([newEnroll]);
@@ -255,6 +240,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
 
   return (
     <div className="space-y-6 page-transition">
+      {/* Giao diện tạo/join lớp (giữ nguyên) */}
       {showCreateClass && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-pop">
@@ -329,22 +315,44 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
   );
 }
 
-function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, navigate }) {
+function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, navigate, setExams, supabase }) {
   const [activeTab, setActiveTab] = useState('exams'); 
-  const joinLink = `${window.location.origin}${window.location.pathname}?join=${cls.code}`;
-  
-  const classStudents = enrollments
-    .filter(e => e.class_id === cls.id)
-    .map(e => allUsers.find(u => u.id === e.student_id))
-    .filter(Boolean); 
+  const [extendingExam, setExtendingExam] = useState(null); // Trạng thái bài nào đang được gia hạn
+  const [newDeadline, setNewDeadline] = useState(''); // Lưu thời gian mới
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(joinLink);
-    alert('Đã copy link mời tham gia lớp!');
+  const joinLink = `${window.location.origin}${window.location.pathname}?join=${cls.code}`;
+  const classStudents = enrollments.filter(e => e.class_id === cls.id).map(e => allUsers.find(u => u.id === e.student_id)).filter(Boolean); 
+
+  // Danh sách bài tập hiển thị (Loại bỏ các bài đã XÓA)
+  const visibleExams = exams.filter(e => !e.is_hidden);
+
+  const copyLink = () => { navigator.clipboard.writeText(joinLink); alert('Đã copy link mời tham gia lớp!'); };
+  const exportPDF = () => { window.print(); };
+
+  // XÓA ĐỀ THI VÀ XÓA FILE PDF
+  const handleDeleteExam = async (exam) => {
+    if(!window.confirm(`Bạn có chắc muốn xóa đề "${exam.title}" không? \nTệp PDF sẽ bị xóa vĩnh viễn để giải phóng dung lượng máy chủ.\n(Điểm của học sinh vẫn sẽ được giữ lại trong Bảng điểm).`)) return;
+
+    // 1. Vào nhà kho (Storage) xé bỏ tờ giấy PDF
+    if (exam.fileUrl && exam.fileUrl !== 'fake-url') {
+      const fileName = exam.fileUrl.split('/').pop();
+      await supabase.storage.from('exams').remove([fileName]);
+    }
+
+    // 2. Đánh dấu Đề thi này là "Đã xóa" và dọn dẹp fileUrl
+    await supabase.from('edu_exams').update({ fileUrl: null, is_hidden: true }).eq('id', exam.id);
+    
+    // Cập nhật lại giao diện ngay lập tức
+    setExams(prev => prev.map(e => e.id === exam.id ? { ...e, fileUrl: null, is_hidden: true } : e));
+    alert('Đã dọn dẹp file và xóa bài tập thành công!');
   };
 
-  const exportPDF = () => {
-    window.print();
+  // GIA HẠN THỜI GIAN
+  const handleSaveDeadline = async () => {
+    await supabase.from('edu_exams').update({ deadline: newDeadline }).eq('id', extendingExam.id);
+    setExams(prev => prev.map(e => e.id === extendingExam.id ? { ...e, deadline: newDeadline } : e));
+    setExtendingExam(null);
+    setNewDeadline('');
   };
 
   return (
@@ -353,6 +361,27 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
         <ArrowLeft size={16} className="mr-1.5 group-hover:-translate-x-1 transition-transform"/> Quay lại bảng tin
       </button>
 
+      {/* Modal Gia Hạn Thời Gian */}
+      {extendingExam && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity no-print">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-pop">
+            <h3 className="text-2xl font-black mb-2">Gia hạn thời gian</h3>
+            <p className="text-gray-500 font-bold mb-6 text-sm">Chỉnh sửa hạn nộp bài: <span className="text-black">{extendingExam.title}</span></p>
+            
+            <input 
+              type="datetime-local" 
+              className="w-full border-2 border-gray-200 p-4 rounded-xl mb-6 outline-none focus:border-black font-bold transition-colors bg-gray-50"
+              value={newDeadline} onChange={(e) => setNewDeadline(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setExtendingExam(null)} className="px-6 py-3 rounded-xl bg-gray-100 font-bold hover:bg-gray-200 transition-colors">Hủy</button>
+              <button onClick={handleSaveDeadline} className="px-6 py-3 rounded-xl bg-black text-white font-bold hover:bg-gray-800 transition-transform hover:scale-105 active:scale-95">Lưu thay đổi</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bảng tên lớp */}
       <div className="bg-black text-white p-8 sm:p-10 rounded-[2rem] shadow-xl relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
         <div className="relative z-10">
           <h1 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight">{cls.name}</h1>
@@ -378,7 +407,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
         </div>
       )}
 
-      {/* --- TAB BÀI TẬP --- */}
+      {/* --- TAB BÀI TẬP (Chỉ hiển thị bài chưa bị xóa) --- */}
       {activeTab === 'exams' && (
         <div className="space-y-6 no-print animate-fade-in-down">
           {currentUser.role === 'teacher' && (
@@ -389,39 +418,64 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
             </div>
           )}
           <div className="bg-white rounded-[2rem] border border-gray-200 overflow-hidden shadow-sm">
-            {exams.length === 0 ? (
+            {visibleExams.length === 0 ? (
               <div className="p-16 text-center text-gray-400 font-bold text-lg">Chưa có bài tập nào.</div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {exams.map((exam) => (
-                  <div key={exam.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4 group">
-                    <div className="flex items-center gap-5">
-                      <div className="w-14 h-14 bg-gray-50 text-gray-600 rounded-2xl flex items-center justify-center shrink-0 border border-gray-200 group-hover:scale-110 transition-transform">
-                        <FileText size={28} />
+                {visibleExams.map((exam) => {
+                  const isExpired = exam.deadline && new Date(exam.deadline) < new Date();
+                  const deadlineText = exam.deadline ? new Date(exam.deadline).toLocaleString('vi-VN') : 'Không giới hạn';
+
+                  return (
+                    <div key={exam.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4 group">
+                      <div className="flex items-center gap-5">
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border group-hover:scale-110 transition-transform ${isExpired ? 'bg-red-50 text-red-500 border-red-100' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                          {isExpired ? <Clock size={28} /> : <FileText size={28} />}
+                        </div>
+                        <div>
+                          <h3 className="font-black text-lg text-gray-800 mb-1 group-hover:text-black transition-colors">{exam.title}</h3>
+                          <div className="flex gap-4">
+                            <p className="text-sm text-gray-500 font-bold">{exam.questions?.length || 0} câu hỏi</p>
+                            <p className={`text-sm font-bold flex items-center gap-1 ${isExpired ? 'text-red-500' : 'text-blue-500'}`}>
+                              <Calendar size={14}/> Hạn nộp: {deadlineText}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-black text-lg text-gray-800 mb-1 group-hover:text-black transition-colors">{exam.title}</h3>
-                        <p className="text-sm text-gray-500 font-bold">{exam.questions?.length || 0} câu hỏi</p>
+                      
+                      {/* KHU VỰC NÚT BẤM (HỌC SINH VÀ GIÁO VIÊN) */}
+                      <div className="flex gap-2">
+                        {currentUser.role === 'student' ? (
+                          isExpired ? (
+                            <button disabled className="bg-gray-200 text-gray-400 px-8 py-3 rounded-xl text-sm font-bold cursor-not-allowed">Đã hết hạn</button>
+                          ) : (
+                            <button onClick={() => navigate('exam_taker', { exam })} className="bg-black text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-gray-800 hover:scale-105 shadow-md transition-all">Làm bài</button>
+                          )
+                        ) : (
+                          // Nút công cụ dành cho Giáo viên
+                          <>
+                            <button onClick={() => {setExtendingExam(exam); setNewDeadline(exam.deadline || '');}} className="text-blue-600 font-bold flex items-center gap-1.5 bg-blue-50 px-4 py-2.5 rounded-xl hover:bg-blue-100 transition-all hover:scale-105" title="Gia hạn thời gian">
+                              <Clock size={16} /> Gia hạn
+                            </button>
+                            <button onClick={() => handleDeleteExam(exam)} className="text-red-500 font-bold flex items-center gap-1.5 bg-red-50 px-4 py-2.5 rounded-xl hover:bg-red-100 transition-all hover:scale-105" title="Xóa đề giải phóng dung lượng">
+                              <Trash2 size={16} /> Xóa
+                            </button>
+                            <button onClick={() => navigate('exam_taker', { exam })} className="text-gray-600 font-bold flex items-center gap-1.5 bg-gray-100 px-4 py-2.5 rounded-xl hover:bg-gray-200 hover:text-black transition-all hover:scale-105" title="Xem thử giao diện học sinh">
+                              <Eye size={16} /> Xem trước
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
-                    {currentUser.role === 'student' ? (
-                      <button onClick={() => navigate('exam_taker', { exam })} className="bg-black text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-gray-800 hover:scale-105 shadow-md transition-all">
-                        Làm bài
-                      </button>
-                    ) : (
-                      <button onClick={() => navigate('exam_taker', { exam })} className="text-gray-500 font-bold flex items-center gap-1.5 bg-gray-100 px-5 py-2.5 rounded-xl hover:bg-gray-200 hover:text-black transition-all hover:scale-105">
-                        <Eye size={16} /> Xem trước
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* --- TAB BẢNG ĐIỂM --- */}
+      {/* --- TAB BẢNG ĐIỂM (Hiển thị CẢ BÀI ĐÃ XÓA) --- */}
       {activeTab === 'students' && currentUser.role === 'teacher' && (
         <div className="space-y-6 animate-fade-in-down">
           <div className="flex justify-between items-center no-print">
@@ -438,8 +492,9 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
                   <tr className="bg-gray-50 text-gray-500 text-sm">
                     <th className="p-4 font-black border-b border-gray-200">Học sinh</th>
                     {exams.map(exam => (
-                      <th key={exam.id} className="p-4 font-black border-b border-gray-200 whitespace-nowrap text-center">
+                      <th key={exam.id} className="p-4 font-black border-b border-gray-200 whitespace-nowrap text-center min-w-[120px]">
                         {exam.title}
+                        {exam.is_hidden && <div className="text-[10px] text-red-400 mt-1 uppercase tracking-wider">(Đã xóa PDF)</div>}
                       </th>
                     ))}
                   </tr>
@@ -486,6 +541,7 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
   const [fileUploaded, setFileUploaded] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null); 
   const [questions, setQuestions] = useState([]);
+  const [deadline, setDeadline] = useState(''); // Đồng hồ hẹn giờ
   const [isSaving, setIsSaving] = useState(false);
 
   const addQuestion = (type) => {
@@ -503,25 +559,26 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
     if (questions.length === 0) return alert('Vui lòng thêm ít nhất 1 câu hỏi!');
 
     setIsSaving(true);
-    
-    // Bơm file lên Storage
     let finalFileUrl = '';
     const fileExt = selectedFile.name.split('.').pop();
     const fileName = `exam_${Date.now()}.${fileExt}`;
     
     const { error: uploadError } = await supabase.storage.from('exams').upload(fileName, selectedFile);
-    
-    if (uploadError) {
-      alert('Lỗi tải file: ' + uploadError.message);
-      setIsSaving(false);
-      return;
-    }
+    if (uploadError) { alert('Lỗi tải file: ' + uploadError.message); setIsSaving(false); return; }
     
     const { data: urlData } = supabase.storage.from('exams').getPublicUrl(fileName);
     finalFileUrl = urlData.publicUrl;
 
-    // Lưu vào Database
-    const newExam = { id: 'e_' + Date.now(), classId: cls.id, title, fileUrl: finalFileUrl, questions };
+    // Lưu vào Database kèm deadline (hạn chót) và is_hidden mặc định là false
+    const newExam = { 
+      id: 'e_' + Date.now(), 
+      classId: cls.id, 
+      title, 
+      fileUrl: finalFileUrl, 
+      questions,
+      deadline: deadline || null,
+      is_hidden: false
+    };
     
     await supabase.from('edu_exams').insert([newExam]);
     setExams([...exams, newExam]);
@@ -535,30 +592,40 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
         <button onClick={() => navigate('class', { cls })} className="text-gray-500 font-bold hover:text-black transition-colors flex items-center gap-1 group">
           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform"/> Hủy tạo đề
         </button>
-        <button onClick={handleSave} className="bg-black text-white px-8 py-3 rounded-xl font-bold hover:bg-gray-800 hover:-translate-y-1 transition-all shadow-md">
+        <button onClick={handleSave} disabled={isSaving} className="bg-black text-white px-8 py-3 rounded-xl font-bold hover:bg-gray-800 hover:-translate-y-1 transition-all shadow-md disabled:bg-gray-400">
           {isSaving ? 'Đang lưu...' : 'Lưu & Phát hành'}
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
-           <label className="font-black text-sm uppercase text-gray-700">1. Tên bài kiểm tra</label>
-           <input type="text" className="w-full border-2 border-gray-200 p-4 rounded-xl mt-2 mb-8 font-bold text-lg outline-none focus:border-black transition-colors" value={title} onChange={e => setTitle(e.target.value)} placeholder="Nhập tên bài..." />
+        <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm transition-shadow hover:shadow-md space-y-6">
+           <div>
+             <label className="font-black text-sm uppercase text-gray-700">1. Tên bài kiểm tra</label>
+             <input type="text" className="w-full border-2 border-gray-200 p-4 rounded-xl mt-2 font-bold text-lg outline-none focus:border-black transition-colors bg-gray-50 focus:bg-white" value={title} onChange={e => setTitle(e.target.value)} placeholder="Nhập tên bài..." />
+           </div>
+
+           <div>
+             <label className="font-black text-sm uppercase text-gray-700">2. Hạn nộp bài (Tùy chọn)</label>
+             <input type="datetime-local" className="w-full border-2 border-gray-200 p-4 rounded-xl mt-2 font-bold outline-none focus:border-black transition-colors bg-gray-50 focus:bg-white" value={deadline} onChange={e => setDeadline(e.target.value)} />
+             <p className="text-xs font-bold text-gray-400 mt-2">Bỏ trống nếu bạn không muốn giới hạn thời gian.</p>
+           </div>
            
-           <label className="font-black text-sm uppercase text-gray-700">2. Đính kèm File Đề (PDF)</label>
-           <div className={`border-2 border-dashed p-10 text-center mt-2 flex flex-col items-center rounded-2xl transition-colors duration-300 ${fileUploaded ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'}`}>
-              <input type="file" accept=".pdf" onChange={(e) => { 
-                if(e.target.files.length) {
-                  setFileUploaded(true);
-                  setSelectedFile(e.target.files[0]);
-                }
-              }} className="cursor-pointer" />
-              {fileUploaded && <span className="mt-3 font-bold text-green-600">Đã chọn: {selectedFile?.name}</span>}
+           <div>
+             <label className="font-black text-sm uppercase text-gray-700">3. Đính kèm File Đề (PDF)</label>
+             <div className={`border-2 border-dashed p-10 text-center mt-2 flex flex-col items-center rounded-2xl transition-colors duration-300 ${fileUploaded ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'}`}>
+                <input type="file" accept=".pdf" onChange={(e) => { 
+                  if(e.target.files.length) {
+                    setFileUploaded(true);
+                    setSelectedFile(e.target.files[0]);
+                  }
+                }} className="cursor-pointer" />
+                {fileUploaded && <span className="mt-3 font-bold text-green-600">Đã chọn: {selectedFile?.name}</span>}
+             </div>
            </div>
         </div>
 
         <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm h-[75vh] flex flex-col transition-shadow hover:shadow-md">
-          <h3 className="font-black text-sm uppercase mb-4 text-gray-700">3. Thiết lập Phiếu Trả Lời</h3>
+          <h3 className="font-black text-sm uppercase mb-4 text-gray-700">4. Thiết lập Phiếu Trả Lời</h3>
           <div className="flex gap-2 mb-4 border-b border-gray-100 pb-4">
             <button onClick={() => addQuestion('mcq4')} className="bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 hover:-translate-y-0.5 transition-all">+ A-B-C-D</button>
             <button onClick={() => addQuestion('tf')} className="bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 hover:-translate-y-0.5 transition-all">+ Đúng/Sai</button>
@@ -647,7 +714,7 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
           ) : (
             <>
               <FileText size={80} className="mb-4 text-gray-200" />
-              Khu Vực Hiển Thị PDF
+              <p className="mt-4">Đề thi này không có file đính kèm hoặc đã bị giáo viên dọn dẹp.</p>
             </>
           )}
         </div>
