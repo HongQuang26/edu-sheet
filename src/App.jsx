@@ -208,19 +208,15 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
     navigate('class', { cls: found });
   };
 
-  // TÍNH NĂNG MỚI: XÓA LỚP HỌC
   const handleDeleteClass = async (e, classObj) => {
-    e.stopPropagation(); // Ngăn việc click vào lớp khi bấm nút xóa
+    e.stopPropagation(); 
     if(!window.confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn lớp "${classObj.name}" không?\nMọi dữ liệu liên quan sẽ bị ẩn đi.`)) return;
 
-    // Xóa lớp khỏi cơ sở dữ liệu
     await supabase.from('edu_classes').delete().eq('id', classObj.id);
-    // Cập nhật lại màn hình
     setClasses(prev => prev.filter(c => c.id !== classObj.id));
     alert('Đã xóa lớp thành công!');
   };
 
-  // ĐƯA GIAO DIỆN MODAL RA NGOÀI LỚP PAGE-TRANSITION ĐỂ KHÔNG BỊ LỖI Z-INDEX
   return (
     <>
       {showCreateClass && (
@@ -281,7 +277,6 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                    className="bg-white border border-gray-200 p-6 rounded-3xl hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group relative"
                    style={{ animationDelay: `${idx * 0.1}s` }}>
                 
-                {/* Nút Xóa Lớp (Chỉ Giáo Viên) */}
                 {currentUser.role === 'teacher' && (
                   <button onClick={(e) => handleDeleteClass(e, cls)} className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Xóa lớp học">
                     <Trash2 size={20} />
@@ -320,21 +315,17 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
   const copyLink = () => { navigator.clipboard.writeText(joinLink); alert('Đã copy link mời tham gia lớp!'); };
   const exportPDF = () => { window.print(); };
 
-  // XÓA ĐỀ THI
   const handleDeleteExam = async (exam) => {
     if(!window.confirm(`Bạn có chắc muốn xóa đề "${exam.title}" không? \nTệp PDF sẽ bị xóa vĩnh viễn để giải phóng dung lượng máy chủ.\n(Điểm của học sinh vẫn sẽ được giữ lại trong Bảng điểm).`)) return;
-
     if (exam.fileUrl && exam.fileUrl !== 'fake-url') {
       const fileName = exam.fileUrl.split('/').pop();
       await supabase.storage.from('exams').remove([fileName]);
     }
-
     await supabase.from('edu_exams').update({ fileUrl: null, is_hidden: true }).eq('id', exam.id);
     setExams(prev => prev.map(e => e.id === exam.id ? { ...e, fileUrl: null, is_hidden: true } : e));
     alert('Đã dọn dẹp file và xóa bài tập thành công!');
   };
 
-  // GIA HẠN THỜI GIAN
   const handleSaveDeadline = async () => {
     await supabase.from('edu_exams').update({ deadline: newDeadline }).eq('id', extendingExam.id);
     setExams(prev => prev.map(e => e.id === extendingExam.id ? { ...e, deadline: newDeadline } : e));
@@ -342,16 +333,13 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
     setNewDeadline('');
   };
 
-  // XÓA HỌC SINH KHỎI LỚP
   const handleRemoveStudent = async (student) => {
     if(!window.confirm(`Bạn có chắc muốn mời học sinh "${student.name}" ra khỏi lớp không?`)) return;
-    
     await supabase.from('edu_enrollments').delete().match({ class_id: cls.id, student_id: student.id });
     setEnrollments(prev => prev.filter(e => !(e.class_id === cls.id && e.student_id === student.id)));
     alert(`Đã mời học sinh ${student.name} ra khỏi lớp!`);
   };
 
-  // ĐƯA GIAO DIỆN MODAL RA NGOÀI LỚP PAGE-TRANSITION
   return (
     <>
       {extendingExam && (
@@ -378,7 +366,6 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
           <ArrowLeft size={16} className="mr-1.5 group-hover:-translate-x-1 transition-transform"/> Quay lại bảng tin
         </button>
 
-        {/* Bảng tên lớp */}
         <div className="bg-black text-white p-8 sm:p-10 rounded-[2rem] shadow-xl relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
           <div className="relative z-10">
             <h1 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight">{cls.name}</h1>
@@ -404,7 +391,6 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
           </div>
         )}
 
-        {/* --- TAB BÀI TẬP --- */}
         {activeTab === 'exams' && (
           <div className="space-y-6 no-print animate-fade-in-down">
             {currentUser.role === 'teacher' && (
@@ -422,12 +408,11 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
                   {visibleExams.map((exam) => {
                     const isExpired = exam.deadline && new Date(exam.deadline) < new Date();
                     const deadlineText = exam.deadline ? new Date(exam.deadline).toLocaleString('vi-VN') : 'Không giới hạn';
-                    const isExamMode = exam.exam_type === 'exam'; // Phân biệt loại bài
+                    const isExamMode = exam.exam_type === 'exam';
 
                     return (
                       <div key={exam.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4 group">
                         <div className="flex items-center gap-5">
-                          {/* Icon đổi màu tùy theo loại bài và hạn nộp */}
                           <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border group-hover:scale-110 transition-transform ${isExpired ? 'bg-red-50 text-red-500 border-red-100' : isExamMode ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
                             {isExpired ? <Clock size={28} /> : isExamMode ? <ShieldAlert size={28} /> : <FileText size={28} />}
                           </div>
@@ -449,7 +434,6 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
                           </div>
                         </div>
                         
-                        {/* KHU VỰC NÚT BẤM */}
                         <div className="flex gap-2">
                           {currentUser.role === 'student' ? (
                             isExpired ? (
@@ -480,7 +464,6 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
           </div>
         )}
 
-        {/* --- TAB BẢNG ĐIỂM VÀ QUẢN LÝ HỌC SINH --- */}
         {activeTab === 'students' && currentUser.role === 'teacher' && (
           <div className="space-y-6 animate-fade-in-down">
             <div className="flex justify-between items-center no-print">
@@ -499,7 +482,6 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
                       {exams.map(exam => (
                         <th key={exam.id} className="p-4 font-black border-b border-gray-200 whitespace-nowrap text-center min-w-[120px]">
                           {exam.title}
-                          {/* Hiển thị chú thích nếu bài thi thật hoặc đã bị xóa */}
                           <div className="flex justify-center gap-1 mt-1">
                             {exam.exam_type === 'exam' && <span className="text-[10px] text-purple-500 bg-purple-50 px-1 rounded uppercase tracking-wider">Thi thật</span>}
                             {exam.is_hidden && <span className="text-[10px] text-red-400 uppercase tracking-wider">(Đã xóa)</span>}
@@ -528,7 +510,6 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
                                     <span className="bg-green-100 text-green-700 px-3 py-1 rounded-lg">
                                       {hsResult.score} / {hsResult.total}
                                     </span>
-                                    {/* CẢNH BÁO GIAN LẬN NẾU LÀ BÀI THI THẬT */}
                                     {exam.exam_type === 'exam' && hsResult.cheat_count > 0 && (
                                       <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm animate-pulse">
                                         <AlertTriangle size={10} /> Gian lận: {hsResult.cheat_count}
@@ -541,7 +522,6 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
                               </td>
                             );
                           })}
-                          {/* NÚT XÓA HỌC SINH */}
                           <td className="p-4 text-right no-print">
                              <button onClick={() => handleRemoveStudent(student)} className="text-gray-400 hover:text-red-500 bg-white hover:bg-red-50 p-2 rounded-lg transition-colors border border-transparent hover:border-red-100 opacity-0 group-hover:opacity-100" title="Mời ra khỏi lớp">
                                <UserMinus size={18} />
@@ -563,7 +543,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
 
 function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
   const [title, setTitle] = useState('');
-  const [examType, setExamType] = useState('practice'); // MẶC ĐỊNH LÀ BÀI LUYỆN TẬP
+  const [examType, setExamType] = useState('practice'); 
   const [fileUploaded, setFileUploaded] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null); 
   const [questions, setQuestions] = useState([]);
@@ -595,7 +575,6 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
     const { data: urlData } = supabase.storage.from('exams').getPublicUrl(fileName);
     finalFileUrl = urlData.publicUrl;
 
-    // Lưu vào Database kèm exam_type
     const newExam = { 
       id: 'e_' + Date.now(), 
       classId: cls.id, 
@@ -604,7 +583,7 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
       questions,
       deadline: deadline || null,
       is_hidden: false,
-      exam_type: examType // Lưu loại bài (practice hoặc exam)
+      exam_type: examType 
     };
     
     await supabase.from('edu_exams').insert([newExam]);
@@ -631,7 +610,6 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
              <input type="text" className="w-full border-2 border-gray-200 p-4 rounded-xl mt-2 font-bold text-lg outline-none focus:border-black transition-colors bg-gray-50 focus:bg-white" value={title} onChange={e => setTitle(e.target.value)} placeholder="Nhập tên bài..." />
            </div>
 
-           {/* KHU VỰC CHỌN LOẠI BÀI */}
            <div>
              <label className="font-black text-sm uppercase text-gray-700">2. Phân loại bài tập</label>
              <div className="flex gap-4 mt-2">
@@ -694,10 +672,17 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
   const [answers, setAnswers] = useState({});
   const [cheatWarning, setCheatWarning] = useState(false);
   const [cheatCount, setCheatCount] = useState(0);
-  const isExamMode = exam.exam_type === 'exam'; // Kiểm tra xem có phải là bài Thi Thật không
+  const isExamMode = exam.exam_type === 'exam'; 
+
+  // Tính năng Auto-Save Lưu Nháp
+  useEffect(() => {
+    if (currentUser.role === 'student') {
+      const savedDraft = localStorage.getItem(`draft_${exam.id}_${currentUser.id}`);
+      if (savedDraft) setAnswers(JSON.parse(savedDraft));
+    }
+  }, [exam.id, currentUser.id, currentUser.role]);
 
   useEffect(() => {
-    // CHỈ BẬT CAMERA GIÁM THỊ NẾU LÀ BÀI THI THẬT
     if (isExamMode) {
       const handleVis = () => { if (document.hidden) { setCheatWarning(true); setCheatCount(prev => prev + 1); } };
       document.addEventListener("visibilitychange", handleVis);
@@ -707,7 +692,12 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
   }, [isExamMode]);
 
   const handleSelect = (qId, val) => {
-    setAnswers({ ...answers, [qId]: val });
+    const newAnswers = { ...answers, [qId]: val };
+    setAnswers(newAnswers);
+    // Tự động lưu nháp
+    if (currentUser.role === 'student') {
+      localStorage.setItem(`draft_${exam.id}_${currentUser.id}`, JSON.stringify(newAnswers));
+    }
   };
 
   const submitExam = async () => {
@@ -729,17 +719,19 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
         class_id: exam.classId,
         score,
         total: questionsList.length,
-        cheat_count: isExamMode ? cheatCount : 0, // Chỉ lưu số lần gian lận nếu là chế độ thi
+        cheat_count: isExamMode ? cheatCount : 0, 
         details
       };
       await supabase.from('edu_results').insert([newResult]);
       setResultsState([...resultsState, newResult]);
+      
+      // Xóa bản nháp sau khi nộp
+      try { localStorage.removeItem(`draft_${exam.id}_${currentUser.id}`); } catch(e){}
     }
 
     navigate('exam_result', { exam: { ...exam, results } });
   };
 
-  // ĐƯA GIAO DIỆN MODAL RA NGOÀI LỚP PAGE-TRANSITION
   return (
     <>
       {cheatWarning && (
@@ -830,58 +822,92 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
 }
 
 function ExamResult({ exam, results, navigate, currentUser }) {
+  const [playingVideo, setPlayingVideo] = useState(null);
+
+  // Bộ lọc thông minh tự động ép link thành chuẩn nhúng
+  const getEmbedUrl = (url) => {
+    if (!url) return '';
+    let embedUrl = url;
+    if (url.includes('youtube.com/watch?v=')) {
+      embedUrl = url.replace('youtube.com/watch?v=', 'youtube.com/embed/').split('&')[0];
+    } else if (url.includes('youtu.be/')) {
+      embedUrl = url.replace('youtu.be/', 'youtube.com/embed/').split('?')[0];
+    }
+    return embedUrl;
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-10 page-transition">
-      <button onClick={() => navigate('class', { cls: { id: exam.classId } })} className="font-bold text-gray-500 hover:text-black flex items-center gap-1.5 transition-colors group">
-         <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Về Lớp học
-      </button>
-      
-      <div className="bg-white border border-gray-200 p-12 rounded-[2.5rem] text-center shadow-xl relative overflow-hidden group hover:shadow-2xl transition-shadow">
-        <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-gray-900 to-black"></div>
-        <h2 className="text-3xl font-black mb-6 text-gray-800">KẾT QUẢ</h2>
-        <div className="inline-flex items-center justify-center w-40 h-40 rounded-full border-[12px] border-black text-6xl font-black text-black group-hover:scale-110 transition-transform duration-500">
-           {results.score}/{results.total}
+    <>
+      {/* CỬA SỔ PHÁT VIDEO CHỮA BÀI (IN-APP PLAYER) */}
+      {playingVideo && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[200] p-4 backdrop-blur-md transition-opacity">
+          <button onClick={() => setPlayingVideo(null)} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors bg-white/10 p-2 rounded-full hover:bg-red-500" title="Đóng Video">
+            <XCircle size={32} />
+          </button>
+          <div className="w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl animate-pop border border-white/10">
+            <iframe 
+              src={getEmbedUrl(playingVideo)} 
+              className="w-full h-full" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              allowFullScreen
+              title="Video Chữa Bài"
+            />
+          </div>
         </div>
-        {currentUser.role === 'teacher' && <p className="mt-6 font-bold text-orange-500 bg-orange-50 inline-block px-4 py-2 rounded-xl border border-orange-100">Bản làm thử (Không lưu vào bảng điểm)</p>}
-      </div>
+      )}
 
-      <div className="flex items-center gap-3 mt-12 mb-6">
-        <div className="w-2 h-8 bg-black rounded-full"></div>
-        <h3 className="text-2xl font-black tracking-tight">Chi tiết & Video Chữa Bài</h3>
-      </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        {(exam.questions || []).map((q, index) => {
-          const detail = results.details.find(d => d.questionId === q.id);
-          const isCorrect = detail?.isCorrect;
+      <div className="max-w-4xl mx-auto space-y-8 pb-10 page-transition">
+        <button onClick={() => navigate('class', { cls: { id: exam.classId } })} className="font-bold text-gray-500 hover:text-black flex items-center gap-1.5 transition-colors group">
+           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Về Lớp học
+        </button>
+        
+        <div className="bg-white border border-gray-200 p-12 rounded-[2.5rem] text-center shadow-xl relative overflow-hidden group hover:shadow-2xl transition-shadow">
+          <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-gray-900 to-black"></div>
+          <h2 className="text-3xl font-black mb-6 text-gray-800">KẾT QUẢ</h2>
+          <div className="inline-flex items-center justify-center w-40 h-40 rounded-full border-[12px] border-black text-6xl font-black text-black group-hover:scale-110 transition-transform duration-500">
+             {results.score}/{results.total}
+          </div>
+          {currentUser.role === 'teacher' && <p className="mt-6 font-bold text-orange-500 bg-orange-50 inline-block px-4 py-2 rounded-xl border border-orange-100">Bản làm thử (Không lưu vào bảng điểm)</p>}
+        </div>
 
-          return (
-            <div key={q.id} className={`bg-white border-2 p-6 rounded-3xl flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 ${isCorrect ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/30'}`}>
-              <div>
-                <div className="flex justify-between items-start mb-4">
-                  <h4 className="font-black text-xl">Câu {index + 1}</h4>
-                  {isCorrect ? <CheckCircle className="text-green-500 shrink-0" size={28} /> : <XCircle className="text-red-500 shrink-0" size={28} />}
+        <div className="flex items-center gap-3 mt-12 mb-6">
+          <div className="w-2 h-8 bg-black rounded-full"></div>
+          <h3 className="text-2xl font-black tracking-tight">Chi tiết & Video Chữa Bài</h3>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {(exam.questions || []).map((q, index) => {
+            const detail = results.details.find(d => d.questionId === q.id);
+            const isCorrect = detail?.isCorrect;
+
+            return (
+              <div key={q.id} className={`bg-white border-2 p-6 rounded-3xl flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 ${isCorrect ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/30'}`}>
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <h4 className="font-black text-xl">Câu {index + 1}</h4>
+                    {isCorrect ? <CheckCircle className="text-green-500 shrink-0" size={28} /> : <XCircle className="text-red-500 shrink-0" size={28} />}
+                  </div>
+                  <div className="text-base font-medium space-y-2 mb-6">
+                    <p className="text-gray-600">Bạn đã chọn: <span className={`font-black ml-1 ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>{detail?.userAnswer || '(Không điền)'}</span></p>
+                    {!isCorrect && <p className="text-gray-600">Đáp án chính xác: <span className="font-black text-black ml-1 bg-gray-100 px-2 py-1 rounded">{q.correct}</span></p>}
+                  </div>
                 </div>
-                <div className="text-base font-medium space-y-2 mb-6">
-                  <p className="text-gray-600">Bạn đã chọn: <span className={`font-black ml-1 ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>{detail?.userAnswer || '(Không điền)'}</span></p>
-                  {!isCorrect && <p className="text-gray-600">Đáp án chính xác: <span className="font-black text-black ml-1 bg-gray-100 px-2 py-1 rounded">{q.correct}</span></p>}
-                </div>
+
+                {q.videoUrl ? (
+                  <button onClick={() => setPlayingVideo(q.videoUrl)} className="mt-auto inline-flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-5 py-3 rounded-xl text-sm font-black hover:bg-blue-600 hover:text-white transition-colors duration-300">
+                    <PlayCircle size={20} /> XEM VIDEO CHỮA BÀI
+                  </button>
+                ) : (
+                  <div className="mt-auto text-center text-xs text-gray-400 font-bold py-3 bg-gray-50 rounded-xl border border-gray-100">
+                    KHÔNG CÓ VIDEO
+                  </div>
+                )}
               </div>
-
-              {q.videoUrl ? (
-                <a href={q.videoUrl} target="_blank" rel="noopener noreferrer" className="mt-auto inline-flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-5 py-3 rounded-xl text-sm font-black hover:bg-blue-600 hover:text-white transition-colors duration-300">
-                  <PlayCircle size={20} /> XEM VIDEO CHỮA BÀI
-                </a>
-              ) : (
-                <div className="mt-auto text-center text-xs text-gray-400 font-bold py-3 bg-gray-50 rounded-xl border border-gray-100">
-                  KHÔNG CÓ VIDEO
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
