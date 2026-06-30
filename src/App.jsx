@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-// Sử dụng link CDN để đảm bảo chạy mượt mà trên mọi môi trường
-import { createClient } from 'https://esm.sh/@supabase/supabase-js';
+// ⚠️ CHÚ Ý: KHI CHẠY TRÊN VS CODE CỦA BẠN, HÃY XÓA DẤU "//" Ở DÒNG DƯỚI ĐÂY:
+// import { createClient } from '@supabase/supabase-js';
 
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
@@ -9,6 +9,30 @@ import {
   ChevronRight, ArrowLeft, Eye, Layout, Trash2, Save, 
   Link as LinkIcon, Download 
 } from 'lucide-react';
+
+// ==========================================
+// ĐOẠN MÔ PHỎNG BẮT BUỘC ĐỂ TRÁNH LỖI TRÊN MÔI TRƯỜNG XEM TRƯỚC NÀY
+// BẠN VUI LÒNG XÓA ĐOẠN NÀY KHI MANG SANG VS CODE NHÉ!
+const createClient = (url, key) => ({
+  auth: {
+    getSession: () => Promise.resolve({ data: { session: null } }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    signInWithPassword: () => Promise.resolve({ error: new Error('Đây là môi trường xem trước. Bạn cần dùng VS Code để đăng nhập thật!') }),
+    signUp: () => Promise.resolve({ error: new Error('Vui lòng chạy trên VS Code để tạo tài khoản thật!') }),
+    signOut: () => Promise.resolve()
+  },
+  from: () => ({
+    select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null }) }), then: (cb) => cb({ data: [] }) }),
+    insert: () => Promise.resolve({ error: null })
+  }),
+  storage: {
+    from: () => ({
+      upload: () => Promise.resolve({ error: null }),
+      getPublicUrl: () => ({ data: { publicUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' } })
+    })
+  }
+});
+// ==========================================
 
 // ==========================================
 // ⚠️ BƯỚC QUAN TRỌNG: DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO 2 DÒNG DƯỚI ĐÂY
@@ -34,7 +58,7 @@ export default function App() {
   
   const [authMode, setAuthMode] = useState('login');
   const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', role: 'student' });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Sửa thành false để vào luôn UI trên bản xem trước
 
   // 1. KIỂM TRA ĐĂNG NHẬP (Nhờ bảo vệ Supabase kiểm tra thẻ)
   useEffect(() => {
@@ -128,12 +152,19 @@ export default function App() {
     setCurrentView(view);
   };
 
+  // Hỗ trợ xem nhanh giao diện trên môi trường xem trước
+  const bypassLoginForDemo = () => {
+    setCurrentUser({ id: 'demo_t1', name: 'Giáo viên Demo', role: 'teacher' });
+    setSession(true);
+    setCurrentView('dashboard');
+  };
+
   // NẾU ĐANG TẢI...
   if (isLoading) return <LoadingScreen />;
 
   // NẾU CHƯA ĐĂNG NHẬP...
   if (!session || !currentUser) {
-    return <AuthScreen authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} handleAuth={handleAuth} />;
+    return <AuthScreen authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} handleAuth={handleAuth} bypassLoginForDemo={bypassLoginForDemo} />;
   }
 
   // NẾU ĐÃ ĐĂNG NHẬP, HIỂN THỊ GIAO DIỆN CHÍNH
@@ -158,7 +189,7 @@ export default function App() {
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8 relative">
         {currentView === 'dashboard' && <Dashboard currentUser={currentUser} classes={classes} setClasses={setClasses} enrollments={enrollments} setEnrollments={setEnrollments} navigate={navigate} />}
         {currentView === 'class' && <ClassDetail currentUser={currentUser} cls={selectedClass} exams={exams.filter(e => e.classId === selectedClass.id)} enrollments={enrollments} allUsers={allUsers} results={results} navigate={navigate} />}
-        {currentView === 'create_exam' && <ExamCreator cls={selectedClass} navigate={navigate} setExams={setExams} exams={exams} />}
+        {currentView === 'create_exam' && <ExamCreator cls={selectedClass} navigate={navigate} setExams={setExams} exams={exams} supabase={supabase} />}
         {currentView === 'exam_taker' && <ExamTaker exam={selectedExam} navigate={navigate} currentUser={currentUser} resultsState={results} setResultsState={setResults} supabase={supabase} />}
         {currentView === 'exam_result' && <ExamResult exam={selectedExam} results={selectedExam.results} navigate={navigate} currentUser={currentUser} />}
       </main>
@@ -371,6 +402,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
         </div>
       )}
 
+      {/* --- TAB BÀI TẬP --- */}
       {activeTab === 'exams' && (
         <div className="space-y-6 no-print animate-fade-in-down">
           {currentUser.role === 'teacher' && (
@@ -413,6 +445,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
         </div>
       )}
 
+      {/* --- TAB BẢNG ĐIỂM --- */}
       {activeTab === 'students' && currentUser.role === 'teacher' && (
         <div className="space-y-6 animate-fade-in-down">
           <div className="flex justify-between items-center no-print">
@@ -472,9 +505,10 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
   );
 }
 
-function ExamCreator({ cls, navigate, setExams, exams }) {
+function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
   const [title, setTitle] = useState('');
   const [fileUploaded, setFileUploaded] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null); 
   const [questions, setQuestions] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -489,11 +523,29 @@ function ExamCreator({ cls, navigate, setExams, exams }) {
 
   const handleSave = async () => {
     if (!title.trim()) return alert('Vui lòng nhập tiêu đề bài kiểm tra!');
-    if (!fileUploaded) return alert('Vui lòng đính kèm file đề bài!');
+    if (!fileUploaded || !selectedFile) return alert('Vui lòng đính kèm file đề bài (PDF)!');
     if (questions.length === 0) return alert('Vui lòng thêm ít nhất 1 câu hỏi!');
 
     setIsSaving(true);
-    const newExam = { id: 'e_' + Date.now(), classId: cls.id, title, fileUrl: 'fake-url', questions };
+    
+    // Bơm file lên Storage
+    let finalFileUrl = '';
+    const fileExt = selectedFile.name.split('.').pop();
+    const fileName = `exam_${Date.now()}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage.from('exams').upload(fileName, selectedFile);
+    
+    if (uploadError) {
+      alert('Lỗi tải file: ' + uploadError.message);
+      setIsSaving(false);
+      return;
+    }
+    
+    const { data: urlData } = supabase.storage.from('exams').getPublicUrl(fileName);
+    finalFileUrl = urlData.publicUrl;
+
+    // Lưu vào Database
+    const newExam = { id: 'e_' + Date.now(), classId: cls.id, title, fileUrl: finalFileUrl, questions };
     
     await supabase.from('edu_exams').insert([newExam]);
     setExams([...exams, newExam]);
@@ -518,8 +570,14 @@ function ExamCreator({ cls, navigate, setExams, exams }) {
            <input type="text" className="w-full border-2 border-gray-200 p-4 rounded-xl mt-2 mb-8 font-bold text-lg outline-none focus:border-black transition-colors" value={title} onChange={e => setTitle(e.target.value)} placeholder="Nhập tên bài..." />
            
            <label className="font-black text-sm uppercase text-gray-700">2. Đính kèm File Đề (PDF)</label>
-           <div className={`border-2 border-dashed p-10 text-center mt-2 rounded-2xl transition-colors duration-300 ${fileUploaded ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'}`}>
-              <input type="file" onChange={(e) => { if(e.target.files.length) setFileUploaded(true) }} className="cursor-pointer" />
+           <div className={`border-2 border-dashed p-10 text-center mt-2 flex flex-col items-center rounded-2xl transition-colors duration-300 ${fileUploaded ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'}`}>
+              <input type="file" accept=".pdf" onChange={(e) => { 
+                if(e.target.files.length) {
+                  setFileUploaded(true);
+                  setSelectedFile(e.target.files[0]);
+                }
+              }} className="cursor-pointer" />
+              {fileUploaded && <span className="mt-3 font-bold text-green-600">Đã chọn: {selectedFile?.name}</span>}
            </div>
         </div>
 
@@ -553,7 +611,6 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
   const [cheatWarning, setCheatWarning] = useState(false);
   const [cheatCount, setCheatCount] = useState(0);
 
-  // Chống gian lận: rời khỏi tab là bị cảnh báo
   useEffect(() => {
     const handleVis = () => { if (document.hidden) { setCheatWarning(true); setCheatCount(prev => prev + 1); } };
     document.addEventListener("visibilitychange", handleVis);
@@ -576,7 +633,6 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
 
     const results = { score, total: questionsList.length, details, cheatCount };
     
-    // NẾU LÀ HỌC SINH -> LƯU ĐIỂM
     if (currentUser.role === 'student') {
       const newResult = {
         id: 'res_' + Date.now(),
@@ -592,7 +648,6 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
       setResultsState([...resultsState, newResult]);
     }
 
-    // Chuyển sang trang xem kết quả
     navigate('exam_result', { exam: { ...exam, results } });
   };
 
@@ -610,9 +665,15 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
       )}
       
       <div className="w-2/3 p-4">
-        <div className="bg-white rounded-3xl border border-gray-200 shadow-sm h-full flex flex-col items-center justify-center text-gray-300 font-bold hover:shadow-md transition-shadow">
-          <FileText size={80} className="mb-4 text-gray-200" />
-          Khu Vực Hiển Thị PDF
+        <div className="bg-white rounded-3xl border border-gray-200 shadow-sm h-full flex flex-col items-center justify-center text-gray-300 font-bold hover:shadow-md transition-shadow relative overflow-hidden">
+          {exam.fileUrl && exam.fileUrl !== 'fake-url' ? (
+            <iframe src={exam.fileUrl} className="absolute inset-0 w-full h-full rounded-3xl" title="Đề thi PDF" />
+          ) : (
+            <>
+              <FileText size={80} className="mb-4 text-gray-200" />
+              Khu Vực Hiển Thị PDF
+            </>
+          )}
         </div>
       </div>
 
