@@ -150,7 +150,7 @@ export default function App() {
         {currentView === 'exam_result' && <ExamResult exam={selectedExam} results={selectedExam.results} navigate={navigate} currentUser={currentUser} />}
       </main>
 
-      {/* CSS Hiệu ứng (Giữ nguyên độ mượt mà) */}
+      {/* CSS Hiệu ứng */}
       <style>{`
         @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
@@ -208,19 +208,23 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
     navigate('class', { cls: found });
   };
 
+  // TÍNH NĂNG MỚI: XÓA LỚP HỌC
   const handleDeleteClass = async (e, classObj) => {
-    e.stopPropagation(); 
+    e.stopPropagation(); // Ngăn việc click vào lớp khi bấm nút xóa
     if(!window.confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn lớp "${classObj.name}" không?\nMọi dữ liệu liên quan sẽ bị ẩn đi.`)) return;
 
+    // Xóa lớp khỏi cơ sở dữ liệu
     await supabase.from('edu_classes').delete().eq('id', classObj.id);
+    // Cập nhật lại màn hình
     setClasses(prev => prev.filter(c => c.id !== classObj.id));
     alert('Đã xóa lớp thành công!');
   };
 
+  // ĐƯA GIAO DIỆN MODAL RA NGOÀI LỚP PAGE-TRANSITION ĐỂ KHÔNG BỊ LỖI Z-INDEX
   return (
-    <div className="space-y-6 page-transition">
+    <>
       {showCreateClass && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm transition-opacity">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-pop">
             <h3 className="text-2xl font-black mb-6">Tạo lớp học mới</h3>
             <input 
@@ -236,67 +240,70 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-3xl font-black tracking-tight">Bảng tin Lớp học</h2>
-        {currentUser.role === 'teacher' ? (
-          <button onClick={() => setShowCreateClass(true)} className="bg-black text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold hover:bg-gray-800 hover:-translate-y-1 transition-all shadow-md hover:shadow-lg">
-            <Plus size={18} /> Tạo lớp mới
-          </button>
+      <div className="space-y-6 page-transition">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h2 className="text-3xl font-black tracking-tight">Bảng tin Lớp học</h2>
+          {currentUser.role === 'teacher' ? (
+            <button onClick={() => setShowCreateClass(true)} className="bg-black text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold hover:bg-gray-800 hover:-translate-y-1 transition-all shadow-md hover:shadow-lg">
+              <Plus size={18} /> Tạo lớp mới
+            </button>
+          ) : (
+            <div className="flex flex-wrap gap-2 animate-fade-in-down">
+              {isJoining ? (
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <input 
+                    type="text" placeholder="Nhập mã lớp..." 
+                    className="border-2 border-gray-200 rounded-xl px-4 py-2 outline-none focus:border-black font-bold uppercase w-40 transition-colors"
+                    value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  />
+                  <button onClick={() => handleJoinClass(joinCode)} className="bg-black text-white px-6 py-2 rounded-xl font-bold hover:bg-gray-800 transition-transform hover:scale-105 active:scale-95">Vào</button>
+                  <button onClick={() => setIsJoining(false)} className="px-5 py-2 rounded-xl bg-gray-100 font-bold hover:bg-gray-200 transition-colors">Hủy</button>
+                </div>
+              ) : (
+                <button onClick={() => setIsJoining(true)} className="bg-black text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold hover:bg-gray-800 hover:-translate-y-1 transition-all shadow-md hover:shadow-lg">
+                  <Plus size={18} /> Tham gia bằng mã
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {myClasses.length === 0 ? (
+          <div className="text-center py-24 bg-white rounded-3xl border border-gray-200 shadow-sm animate-pop">
+            <BookOpen className="mx-auto text-gray-200 mb-4" size={64} />
+            <p className="text-gray-500 font-bold text-lg mb-2">Bạn chưa có lớp học nào.</p>
+            {currentUser.role === 'student' && <p className="text-gray-400 text-sm">Hãy xin mã lớp từ giáo viên hoặc bấm vào link chia sẻ để tham gia nhé!</p>}
+          </div>
         ) : (
-          <div className="flex flex-wrap gap-2 animate-fade-in-down">
-            {isJoining ? (
-              <div className="flex gap-2 w-full sm:w-auto">
-                <input 
-                  type="text" placeholder="Nhập mã lớp..." 
-                  className="border-2 border-gray-200 rounded-xl px-4 py-2 outline-none focus:border-black font-bold uppercase w-40 transition-colors"
-                  value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                />
-                <button onClick={() => handleJoinClass(joinCode)} className="bg-black text-white px-6 py-2 rounded-xl font-bold hover:bg-gray-800 transition-transform hover:scale-105 active:scale-95">Vào</button>
-                <button onClick={() => setIsJoining(false)} className="px-5 py-2 rounded-xl bg-gray-100 font-bold hover:bg-gray-200 transition-colors">Hủy</button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+            {myClasses.map((cls, idx) => (
+              <div key={cls.id} onClick={() => navigate('class', { cls })} 
+                   className="bg-white border border-gray-200 p-6 rounded-3xl hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group relative"
+                   style={{ animationDelay: `${idx * 0.1}s` }}>
+                
+                {/* Nút Xóa Lớp (Chỉ Giáo Viên) */}
+                {currentUser.role === 'teacher' && (
+                  <button onClick={(e) => handleDeleteClass(e, cls)} className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Xóa lớp học">
+                    <Trash2 size={20} />
+                  </button>
+                )}
+
+                <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-5 border border-blue-100 group-hover:scale-110 transition-transform duration-300">
+                  <BookOpen size={28} />
+                </div>
+                <h3 className="text-xl font-black mb-2 truncate text-gray-800 pr-8">{cls.name}</h3>
+                {currentUser.role === 'teacher' && (
+                  <p className="text-gray-500 text-sm mb-5 font-medium">Mã chia sẻ: <span className="font-mono font-bold bg-gray-100 text-black px-2 py-1 rounded-md">{cls.code}</span></p>
+                )}
+                <div className="flex items-center text-sm text-gray-400 font-bold group-hover:text-black transition-colors mt-4">
+                  Vào lớp <ChevronRight size={18} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                </div>
               </div>
-            ) : (
-              <button onClick={() => setIsJoining(true)} className="bg-black text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold hover:bg-gray-800 hover:-translate-y-1 transition-all shadow-md hover:shadow-lg">
-                <Plus size={18} /> Tham gia bằng mã
-              </button>
-            )}
+            ))}
           </div>
         )}
       </div>
-
-      {myClasses.length === 0 ? (
-        <div className="text-center py-24 bg-white rounded-3xl border border-gray-200 shadow-sm animate-pop">
-          <BookOpen className="mx-auto text-gray-200 mb-4" size={64} />
-          <p className="text-gray-500 font-bold text-lg mb-2">Bạn chưa có lớp học nào.</p>
-          {currentUser.role === 'student' && <p className="text-gray-400 text-sm">Hãy xin mã lớp từ giáo viên hoặc bấm vào link chia sẻ để tham gia nhé!</p>}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-          {myClasses.map((cls, idx) => (
-            <div key={cls.id} onClick={() => navigate('class', { cls })} 
-                 className="bg-white border border-gray-200 p-6 rounded-3xl hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group relative"
-                 style={{ animationDelay: `${idx * 0.1}s` }}>
-              
-              {currentUser.role === 'teacher' && (
-                <button onClick={(e) => handleDeleteClass(e, cls)} className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Xóa lớp học">
-                  <Trash2 size={20} />
-                </button>
-              )}
-
-              <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-5 border border-blue-100 group-hover:scale-110 transition-transform duration-300">
-                <BookOpen size={28} />
-              </div>
-              <h3 className="text-xl font-black mb-2 truncate text-gray-800 pr-8">{cls.name}</h3>
-              {currentUser.role === 'teacher' && (
-                <p className="text-gray-500 text-sm mb-5 font-medium">Mã chia sẻ: <span className="font-mono font-bold bg-gray-100 text-black px-2 py-1 rounded-md">{cls.code}</span></p>
-              )}
-              <div className="flex items-center text-sm text-gray-400 font-bold group-hover:text-black transition-colors mt-4">
-                Vào lớp <ChevronRight size={18} className="ml-1 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    </>
   );
 }
 
@@ -313,6 +320,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
   const copyLink = () => { navigator.clipboard.writeText(joinLink); alert('Đã copy link mời tham gia lớp!'); };
   const exportPDF = () => { window.print(); };
 
+  // XÓA ĐỀ THI
   const handleDeleteExam = async (exam) => {
     if(!window.confirm(`Bạn có chắc muốn xóa đề "${exam.title}" không? \nTệp PDF sẽ bị xóa vĩnh viễn để giải phóng dung lượng máy chủ.\n(Điểm của học sinh vẫn sẽ được giữ lại trong Bảng điểm).`)) return;
 
@@ -326,6 +334,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
     alert('Đã dọn dẹp file và xóa bài tập thành công!');
   };
 
+  // GIA HẠN THỜI GIAN
   const handleSaveDeadline = async () => {
     await supabase.from('edu_exams').update({ deadline: newDeadline }).eq('id', extendingExam.id);
     setExams(prev => prev.map(e => e.id === extendingExam.id ? { ...e, deadline: newDeadline } : e));
@@ -333,21 +342,20 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
     setNewDeadline('');
   };
 
+  // XÓA HỌC SINH KHỎI LỚP
   const handleRemoveStudent = async (student) => {
     if(!window.confirm(`Bạn có chắc muốn mời học sinh "${student.name}" ra khỏi lớp không?`)) return;
+    
     await supabase.from('edu_enrollments').delete().match({ class_id: cls.id, student_id: student.id });
     setEnrollments(prev => prev.filter(e => !(e.class_id === cls.id && e.student_id === student.id)));
     alert(`Đã mời học sinh ${student.name} ra khỏi lớp!`);
   };
 
+  // ĐƯA GIAO DIỆN MODAL RA NGOÀI LỚP PAGE-TRANSITION
   return (
-    <div className="space-y-6 print-section page-transition">
-      <button onClick={() => navigate('dashboard')} className="flex items-center text-sm text-gray-500 hover:text-black transition-colors font-bold no-print group">
-        <ArrowLeft size={16} className="mr-1.5 group-hover:-translate-x-1 transition-transform"/> Quay lại bảng tin
-      </button>
-
+    <>
       {extendingExam && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity no-print">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm transition-opacity no-print">
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-pop">
             <h3 className="text-2xl font-black mb-2">Gia hạn thời gian</h3>
             <p className="text-gray-500 font-bold mb-6 text-sm">Chỉnh sửa hạn nộp bài: <span className="text-black">{extendingExam.title}</span></p>
@@ -365,183 +373,197 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
         </div>
       )}
 
-      <div className="bg-black text-white p-8 sm:p-10 rounded-[2rem] shadow-xl relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
-        <div className="relative z-10">
-          <h1 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight">{cls.name}</h1>
-          {currentUser.role === 'teacher' && (
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-gray-400 font-medium text-sm">Mã tham gia: <span className="text-white font-mono font-bold bg-white/20 px-3 py-1.5 rounded-lg ml-1">{cls.code}</span></span>
-              <button onClick={copyLink} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors no-print">
-                <LinkIcon size={14} /> Copy Link Mời
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      <div className="space-y-6 print-section page-transition">
+        <button onClick={() => navigate('dashboard')} className="flex items-center text-sm text-gray-500 hover:text-black transition-colors font-bold no-print group">
+          <ArrowLeft size={16} className="mr-1.5 group-hover:-translate-x-1 transition-transform"/> Quay lại bảng tin
+        </button>
 
-      {currentUser.role === 'teacher' && (
-        <div className="flex gap-4 border-b border-gray-200 no-print">
-          <button onClick={() => setActiveTab('exams')} className={`pb-3 font-black text-lg border-b-4 transition-all duration-300 ${activeTab === 'exams' ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
-            Bài tập & Đề thi
-          </button>
-          <button onClick={() => setActiveTab('students')} className={`pb-3 font-black text-lg border-b-4 transition-all duration-300 flex items-center gap-2 ${activeTab === 'students' ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
-            Quản lý học sinh <span className={`text-xs px-2 py-0.5 rounded-full transition-colors ${activeTab === 'students' ? 'bg-black text-white' : 'bg-gray-100 text-black'}`}>{classStudents.length}</span>
-          </button>
-        </div>
-      )}
-
-      {activeTab === 'exams' && (
-        <div className="space-y-6 no-print animate-fade-in-down">
-          {currentUser.role === 'teacher' && (
-            <div className="flex justify-end">
-              <button onClick={() => navigate('create_exam', { cls })} className="bg-black text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-md hover:bg-gray-800 hover:-translate-y-1 transition-all">
-                <Plus size={18} /> Soạn Bài mới
-              </button>
-            </div>
-          )}
-          <div className="bg-white rounded-[2rem] border border-gray-200 overflow-hidden shadow-sm">
-            {visibleExams.length === 0 ? (
-              <div className="p-16 text-center text-gray-400 font-bold text-lg">Chưa có bài tập nào.</div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {visibleExams.map((exam) => {
-                  const isExpired = exam.deadline && new Date(exam.deadline) < new Date();
-                  const deadlineText = exam.deadline ? new Date(exam.deadline).toLocaleString('vi-VN') : 'Không giới hạn';
-                  const isExamMode = exam.exam_type === 'exam';
-
-                  return (
-                    <div key={exam.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4 group">
-                      <div className="flex items-center gap-5">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border group-hover:scale-110 transition-transform ${isExpired ? 'bg-red-50 text-red-500 border-red-100' : isExamMode ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
-                          {isExpired ? <Clock size={28} /> : isExamMode ? <ShieldAlert size={28} /> : <FileText size={28} />}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                             <h3 className="font-black text-lg text-gray-800 group-hover:text-black transition-colors">{exam.title}</h3>
-                             {isExamMode ? (
-                               <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Thi thật</span>
-                             ) : (
-                               <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Luyện tập</span>
-                             )}
-                          </div>
-                          <div className="flex gap-4">
-                            <p className="text-sm text-gray-500 font-bold">{exam.questions?.length || 0} câu hỏi</p>
-                            <p className={`text-sm font-bold flex items-center gap-1 ${isExpired ? 'text-red-500' : 'text-blue-500'}`}>
-                              <Calendar size={14}/> Hạn: {deadlineText}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        {currentUser.role === 'student' ? (
-                          isExpired ? (
-                            <button disabled className="bg-gray-200 text-gray-400 px-8 py-3 rounded-xl text-sm font-bold cursor-not-allowed">Đã hết hạn</button>
-                          ) : (
-                            <button onClick={() => navigate('exam_taker', { exam })} className="bg-black text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-gray-800 hover:scale-105 shadow-md transition-all">Làm bài</button>
-                          )
-                        ) : (
-                          <>
-                            <button onClick={() => {setExtendingExam(exam); setNewDeadline(exam.deadline || '');}} className="text-blue-600 font-bold flex items-center gap-1.5 bg-blue-50 px-4 py-2.5 rounded-xl hover:bg-blue-100 transition-all hover:scale-105" title="Gia hạn thời gian">
-                              <Clock size={16} /> Gia hạn
-                            </button>
-                            <button onClick={() => handleDeleteExam(exam)} className="text-red-500 font-bold flex items-center gap-1.5 bg-red-50 px-4 py-2.5 rounded-xl hover:bg-red-100 transition-all hover:scale-105" title="Xóa đề giải phóng dung lượng">
-                              <Trash2 size={16} /> Xóa
-                            </button>
-                            <button onClick={() => navigate('exam_taker', { exam })} className="text-gray-600 font-bold flex items-center gap-1.5 bg-gray-100 px-4 py-2.5 rounded-xl hover:bg-gray-200 hover:text-black transition-all hover:scale-105" title="Xem thử">
-                              <Eye size={16} /> Xem
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+        {/* Bảng tên lớp */}
+        <div className="bg-black text-white p-8 sm:p-10 rounded-[2rem] shadow-xl relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
+          <div className="relative z-10">
+            <h1 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight">{cls.name}</h1>
+            {currentUser.role === 'teacher' && (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-gray-400 font-medium text-sm">Mã tham gia: <span className="text-white font-mono font-bold bg-white/20 px-3 py-1.5 rounded-lg ml-1">{cls.code}</span></span>
+                <button onClick={copyLink} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors no-print">
+                  <LinkIcon size={14} /> Copy Link Mời
+                </button>
               </div>
             )}
           </div>
         </div>
-      )}
 
-      {activeTab === 'students' && currentUser.role === 'teacher' && (
-        <div className="space-y-6 animate-fade-in-down">
-          <div className="flex justify-between items-center no-print">
-            <h2 className="text-2xl font-black">Bảng điểm & Học sinh</h2>
-            <button onClick={exportPDF} className="bg-white border-2 border-gray-200 px-4 py-2 rounded-xl flex items-center gap-2 hover:border-black hover:bg-gray-50 font-bold transition-all hover:-translate-y-0.5 shadow-sm">
-              <Download size={16} /> Xuất file (PDF)
+        {currentUser.role === 'teacher' && (
+          <div className="flex gap-4 border-b border-gray-200 no-print">
+            <button onClick={() => setActiveTab('exams')} className={`pb-3 font-black text-lg border-b-4 transition-all duration-300 ${activeTab === 'exams' ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+              Bài tập & Đề thi
+            </button>
+            <button onClick={() => setActiveTab('students')} className={`pb-3 font-black text-lg border-b-4 transition-all duration-300 flex items-center gap-2 ${activeTab === 'students' ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+              Quản lý học sinh <span className={`text-xs px-2 py-0.5 rounded-full transition-colors ${activeTab === 'students' ? 'bg-black text-white' : 'bg-gray-100 text-black'}`}>{classStudents.length}</span>
             </button>
           </div>
+        )}
 
-          <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm transition-shadow hover:shadow-md">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500 text-sm">
-                    <th className="p-4 font-black border-b border-gray-200">Học sinh</th>
-                    {exams.map(exam => (
-                      <th key={exam.id} className="p-4 font-black border-b border-gray-200 whitespace-nowrap text-center min-w-[120px]">
-                        {exam.title}
-                        <div className="flex justify-center gap-1 mt-1">
-                          {exam.exam_type === 'exam' && <span className="text-[10px] text-purple-500 bg-purple-50 px-1 rounded uppercase tracking-wider">Thi thật</span>}
-                          {exam.is_hidden && <span className="text-[10px] text-red-400 uppercase tracking-wider">(Đã xóa)</span>}
+        {/* --- TAB BÀI TẬP --- */}
+        {activeTab === 'exams' && (
+          <div className="space-y-6 no-print animate-fade-in-down">
+            {currentUser.role === 'teacher' && (
+              <div className="flex justify-end">
+                <button onClick={() => navigate('create_exam', { cls })} className="bg-black text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-md hover:bg-gray-800 hover:-translate-y-1 transition-all">
+                  <Plus size={18} /> Soạn Bài mới
+                </button>
+              </div>
+            )}
+            <div className="bg-white rounded-[2rem] border border-gray-200 overflow-hidden shadow-sm">
+              {visibleExams.length === 0 ? (
+                <div className="p-16 text-center text-gray-400 font-bold text-lg">Chưa có bài tập nào.</div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {visibleExams.map((exam) => {
+                    const isExpired = exam.deadline && new Date(exam.deadline) < new Date();
+                    const deadlineText = exam.deadline ? new Date(exam.deadline).toLocaleString('vi-VN') : 'Không giới hạn';
+                    const isExamMode = exam.exam_type === 'exam'; // Phân biệt loại bài
+
+                    return (
+                      <div key={exam.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4 group">
+                        <div className="flex items-center gap-5">
+                          {/* Icon đổi màu tùy theo loại bài và hạn nộp */}
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border group-hover:scale-110 transition-transform ${isExpired ? 'bg-red-50 text-red-500 border-red-100' : isExamMode ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
+                            {isExpired ? <Clock size={28} /> : isExamMode ? <ShieldAlert size={28} /> : <FileText size={28} />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                               <h3 className="font-black text-lg text-gray-800 group-hover:text-black transition-colors">{exam.title}</h3>
+                               {isExamMode ? (
+                                 <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Thi thật</span>
+                               ) : (
+                                 <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Luyện tập</span>
+                               )}
+                            </div>
+                            <div className="flex gap-4">
+                              <p className="text-sm text-gray-500 font-bold">{exam.questions?.length || 0} câu hỏi</p>
+                              <p className={`text-sm font-bold flex items-center gap-1 ${isExpired ? 'text-red-500' : 'text-blue-500'}`}>
+                                <Calendar size={14}/> Hạn: {deadlineText}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                      </th>
-                    ))}
-                    <th className="p-4 font-black border-b border-gray-200 text-right no-print">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {classStudents.length === 0 ? (
-                    <tr><td colSpan={exams.length + 2} className="p-8 text-center text-gray-400 font-bold">Chưa có học sinh nào tham gia lớp.</td></tr>
-                  ) : (
-                    classStudents.map(student => (
-                      <tr key={student.id} className="hover:bg-gray-50 transition-colors group">
-                        <td className="p-4">
-                          <div className="font-black text-gray-900">{student.name}</div>
-                          <div className="text-xs text-gray-500 font-bold">{student.username}</div>
-                        </td>
-                        {exams.map(exam => {
-                          const hsResult = results.find(r => r.exam_id === exam.id && r.student_id === student.id);
-                          return (
-                            <td key={exam.id} className="p-4 text-center font-bold">
-                              {hsResult ? (
-                                <div className="flex flex-col items-center justify-center gap-1">
-                                  <span className="bg-green-100 text-green-700 px-3 py-1 rounded-lg">
-                                    {hsResult.score} / {hsResult.total}
-                                  </span>
-                                  {exam.exam_type === 'exam' && hsResult.cheat_count > 0 && (
-                                    <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm animate-pulse">
-                                      <AlertTriangle size={10} /> Gian lận: {hsResult.cheat_count}
-                                    </span>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-gray-300">-</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                        <td className="p-4 text-right no-print">
-                           <button onClick={() => handleRemoveStudent(student)} className="text-gray-400 hover:text-red-500 bg-white hover:bg-red-50 p-2 rounded-lg transition-colors border border-transparent hover:border-red-100 opacity-0 group-hover:opacity-100" title="Mời ra khỏi lớp">
-                             <UserMinus size={18} />
-                           </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                        
+                        {/* KHU VỰC NÚT BẤM */}
+                        <div className="flex gap-2">
+                          {currentUser.role === 'student' ? (
+                            isExpired ? (
+                              <button disabled className="bg-gray-200 text-gray-400 px-8 py-3 rounded-xl text-sm font-bold cursor-not-allowed">Đã hết hạn</button>
+                            ) : (
+                              <button onClick={() => navigate('exam_taker', { exam })} className="bg-black text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-gray-800 hover:scale-105 shadow-md transition-all">Làm bài</button>
+                            )
+                          ) : (
+                            <>
+                              <button onClick={() => {setExtendingExam(exam); setNewDeadline(exam.deadline || '');}} className="text-blue-600 font-bold flex items-center gap-1.5 bg-blue-50 px-4 py-2.5 rounded-xl hover:bg-blue-100 transition-all hover:scale-105" title="Gia hạn thời gian">
+                                <Clock size={16} /> Gia hạn
+                              </button>
+                              <button onClick={() => handleDeleteExam(exam)} className="text-red-500 font-bold flex items-center gap-1.5 bg-red-50 px-4 py-2.5 rounded-xl hover:bg-red-100 transition-all hover:scale-105" title="Xóa đề giải phóng dung lượng">
+                                <Trash2 size={16} /> Xóa
+                              </button>
+                              <button onClick={() => navigate('exam_taker', { exam })} className="text-gray-600 font-bold flex items-center gap-1.5 bg-gray-100 px-4 py-2.5 rounded-xl hover:bg-gray-200 hover:text-black transition-all hover:scale-105" title="Xem thử">
+                                <Eye size={16} /> Xem
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* --- TAB BẢNG ĐIỂM VÀ QUẢN LÝ HỌC SINH --- */}
+        {activeTab === 'students' && currentUser.role === 'teacher' && (
+          <div className="space-y-6 animate-fade-in-down">
+            <div className="flex justify-between items-center no-print">
+              <h2 className="text-2xl font-black">Bảng điểm & Học sinh</h2>
+              <button onClick={exportPDF} className="bg-white border-2 border-gray-200 px-4 py-2 rounded-xl flex items-center gap-2 hover:border-black hover:bg-gray-50 font-bold transition-all hover:-translate-y-0.5 shadow-sm">
+                <Download size={16} /> Xuất file (PDF)
+              </button>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm transition-shadow hover:shadow-md">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-500 text-sm">
+                      <th className="p-4 font-black border-b border-gray-200">Học sinh</th>
+                      {exams.map(exam => (
+                        <th key={exam.id} className="p-4 font-black border-b border-gray-200 whitespace-nowrap text-center min-w-[120px]">
+                          {exam.title}
+                          {/* Hiển thị chú thích nếu bài thi thật hoặc đã bị xóa */}
+                          <div className="flex justify-center gap-1 mt-1">
+                            {exam.exam_type === 'exam' && <span className="text-[10px] text-purple-500 bg-purple-50 px-1 rounded uppercase tracking-wider">Thi thật</span>}
+                            {exam.is_hidden && <span className="text-[10px] text-red-400 uppercase tracking-wider">(Đã xóa)</span>}
+                          </div>
+                        </th>
+                      ))}
+                      <th className="p-4 font-black border-b border-gray-200 text-right no-print">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {classStudents.length === 0 ? (
+                      <tr><td colSpan={exams.length + 2} className="p-8 text-center text-gray-400 font-bold">Chưa có học sinh nào tham gia lớp.</td></tr>
+                    ) : (
+                      classStudents.map(student => (
+                        <tr key={student.id} className="hover:bg-gray-50 transition-colors group">
+                          <td className="p-4">
+                            <div className="font-black text-gray-900">{student.name}</div>
+                            <div className="text-xs text-gray-500 font-bold">{student.username}</div>
+                          </td>
+                          {exams.map(exam => {
+                            const hsResult = results.find(r => r.exam_id === exam.id && r.student_id === student.id);
+                            return (
+                              <td key={exam.id} className="p-4 text-center font-bold">
+                                {hsResult ? (
+                                  <div className="flex flex-col items-center justify-center gap-1">
+                                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-lg">
+                                      {hsResult.score} / {hsResult.total}
+                                    </span>
+                                    {/* CẢNH BÁO GIAN LẬN NẾU LÀ BÀI THI THẬT */}
+                                    {exam.exam_type === 'exam' && hsResult.cheat_count > 0 && (
+                                      <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm animate-pulse">
+                                        <AlertTriangle size={10} /> Gian lận: {hsResult.cheat_count}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-300">-</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          {/* NÚT XÓA HỌC SINH */}
+                          <td className="p-4 text-right no-print">
+                             <button onClick={() => handleRemoveStudent(student)} className="text-gray-400 hover:text-red-500 bg-white hover:bg-red-50 p-2 rounded-lg transition-colors border border-transparent hover:border-red-100 opacity-0 group-hover:opacity-100" title="Mời ra khỏi lớp">
+                               <UserMinus size={18} />
+                             </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
 function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
   const [title, setTitle] = useState('');
-  const [examType, setExamType] = useState('practice'); 
+  const [examType, setExamType] = useState('practice'); // MẶC ĐỊNH LÀ BÀI LUYỆN TẬP
   const [fileUploaded, setFileUploaded] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null); 
   const [questions, setQuestions] = useState([]);
@@ -573,6 +595,7 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
     const { data: urlData } = supabase.storage.from('exams').getPublicUrl(fileName);
     finalFileUrl = urlData.publicUrl;
 
+    // Lưu vào Database kèm exam_type
     const newExam = { 
       id: 'e_' + Date.now(), 
       classId: cls.id, 
@@ -581,7 +604,7 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
       questions,
       deadline: deadline || null,
       is_hidden: false,
-      exam_type: examType 
+      exam_type: examType // Lưu loại bài (practice hoặc exam)
     };
     
     await supabase.from('edu_exams').insert([newExam]);
@@ -608,6 +631,7 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
              <input type="text" className="w-full border-2 border-gray-200 p-4 rounded-xl mt-2 font-bold text-lg outline-none focus:border-black transition-colors bg-gray-50 focus:bg-white" value={title} onChange={e => setTitle(e.target.value)} placeholder="Nhập tên bài..." />
            </div>
 
+           {/* KHU VỰC CHỌN LOẠI BÀI */}
            <div>
              <label className="font-black text-sm uppercase text-gray-700">2. Phân loại bài tập</label>
              <div className="flex gap-4 mt-2">
@@ -667,17 +691,13 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
 }
 
 function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState, supabase }) {
-  const [answers, setAnswers] = useState(() => {
-    try {
-      const saved = localStorage.getItem(`draft_${exam.id}_${currentUser.id}`);
-      return saved ? JSON.parse(saved) : {};
-    } catch(e) { return {}; }
-  });
+  const [answers, setAnswers] = useState({});
   const [cheatWarning, setCheatWarning] = useState(false);
   const [cheatCount, setCheatCount] = useState(0);
-  const isExamMode = exam.exam_type === 'exam'; 
+  const isExamMode = exam.exam_type === 'exam'; // Kiểm tra xem có phải là bài Thi Thật không
 
   useEffect(() => {
+    // CHỈ BẬT CAMERA GIÁM THỊ NẾU LÀ BÀI THI THẬT
     if (isExamMode) {
       const handleVis = () => { if (document.hidden) { setCheatWarning(true); setCheatCount(prev => prev + 1); } };
       document.addEventListener("visibilitychange", handleVis);
@@ -687,9 +707,7 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
   }, [isExamMode]);
 
   const handleSelect = (qId, val) => {
-    const newAnswers = { ...answers, [qId]: val };
-    setAnswers(newAnswers);
-    try { localStorage.setItem(`draft_${exam.id}_${currentUser.id}`, JSON.stringify(newAnswers)); } catch(e) {}
+    setAnswers({ ...answers, [qId]: val });
   };
 
   const submitExam = async () => {
@@ -711,22 +729,21 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
         class_id: exam.classId,
         score,
         total: questionsList.length,
-        cheat_count: isExamMode ? cheatCount : 0, 
+        cheat_count: isExamMode ? cheatCount : 0, // Chỉ lưu số lần gian lận nếu là chế độ thi
         details
       };
       await supabase.from('edu_results').insert([newResult]);
       setResultsState([...resultsState, newResult]);
-      
-      try { localStorage.removeItem(`draft_${exam.id}_${currentUser.id}`); } catch(e){}
     }
 
     navigate('exam_result', { exam: { ...exam, results } });
   };
 
+  // ĐƯA GIAO DIỆN MODAL RA NGOÀI LỚP PAGE-TRANSITION
   return (
-    <div className="h-[calc(100vh-64px)] flex bg-gray-100 overflow-hidden absolute inset-0 top-16 page-transition">
+    <>
       {cheatWarning && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 transition-opacity backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 transition-opacity backdrop-blur-sm">
           <div className="bg-white rounded-3xl p-8 max-w-sm text-center animate-pop shadow-2xl">
             <AlertTriangle size={64} className="text-red-500 mx-auto mb-4 animate-pulse" />
             <h3 className="text-2xl font-black text-red-600 mb-2">Cảnh báo gian lận!</h3>
@@ -736,77 +753,79 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
         </div>
       )}
       
-      <div className="w-2/3 p-4">
-        <div className="bg-white rounded-3xl border border-gray-200 shadow-sm h-full flex flex-col items-center justify-center text-gray-300 font-bold hover:shadow-md transition-shadow relative overflow-hidden">
-          {exam.fileUrl && exam.fileUrl !== 'fake-url' ? (
-            <iframe src={exam.fileUrl} className="absolute inset-0 w-full h-full rounded-3xl" title="Đề thi PDF" />
-          ) : (
-            <>
-              <FileText size={80} className="mb-4 text-gray-200" />
-              <p className="mt-4">Đề thi này không có file đính kèm hoặc đã bị giáo viên dọn dẹp.</p>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="w-1/3 bg-white border-l border-gray-200 h-full flex flex-col shadow-2xl relative z-10">
-        <div className="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
-          <div>
-             <h3 className="font-black text-lg text-gray-800 line-clamp-1">{exam.title}</h3>
-             {currentUser.role === 'teacher' ? (
-               <span className="text-xs font-bold text-orange-500 bg-orange-100 px-2 py-0.5 rounded-full mt-1 inline-block">Xem trước (Không lưu điểm)</span>
-             ) : (
-               isExamMode ? (
-                 <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded flex items-center gap-1 mt-1 w-max"><ShieldAlert size={12}/> Đang bật giám sát</span>
-               ) : (
-                 <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1 mt-1 w-max"><BookOpen size={12}/> Luyện tập tự do</span>
-               )
-             )}
+      <div className="h-[calc(100vh-64px)] flex bg-gray-100 overflow-hidden absolute inset-0 top-16 page-transition">
+        <div className="w-2/3 p-4">
+          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm h-full flex flex-col items-center justify-center text-gray-300 font-bold hover:shadow-md transition-shadow relative overflow-hidden">
+            {exam.fileUrl && exam.fileUrl !== 'fake-url' ? (
+              <iframe src={exam.fileUrl} className="absolute inset-0 w-full h-full rounded-3xl" title="Đề thi PDF" />
+            ) : (
+              <>
+                <FileText size={80} className="mb-4 text-gray-200" />
+                <p className="mt-4">Đề thi này không có file đính kèm hoặc đã bị giáo viên dọn dẹp.</p>
+              </>
+            )}
           </div>
-          <button onClick={submitExam} className="bg-black text-white px-5 py-2.5 rounded-xl font-black hover:bg-gray-800 hover:-translate-y-0.5 transition-all shadow-md hover:shadow-lg">NỘP BÀI</button>
         </div>
-        
-        <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-gray-50/50">
-          {(exam.questions || []).map((q, i) => (
-            <div key={q.id} className="p-5 border-2 border-gray-100 rounded-2xl bg-white shadow-sm hover:border-gray-300 transition-colors">
-              <h4 className="font-black mb-4 text-gray-800">Câu {i + 1}</h4>
-              
-              {q.type === 'mcq4' && (
-                <div className="flex gap-4 justify-center">
-                  {['A', 'B', 'C', 'D'].map(opt => (
-                    <button
-                      key={opt} onClick={() => handleSelect(q.id, opt)}
-                      className={`w-14 h-14 rounded-full border-2 font-black text-xl transition-all duration-300 ${answers[q.id] === opt ? 'bg-black text-white border-black scale-110 shadow-lg' : 'border-gray-200 text-gray-500 hover:bg-gray-50 hover:border-gray-400'}`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {q.type === 'tf' && (
-                <div className="flex gap-4 justify-center">
-                  {['Đúng', 'Sai'].map(opt => (
-                    <button
-                      key={opt} onClick={() => handleSelect(q.id, opt)}
-                      className={`flex-1 py-3 rounded-xl border-2 font-black text-lg transition-all duration-300 ${answers[q.id] === opt ? 'bg-black text-white border-black shadow-lg scale-105' : 'border-gray-200 text-gray-500 hover:bg-gray-50 hover:border-gray-400'}`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {q.type === 'short' && (
-                <input 
-                  type="text" placeholder="Nhập đáp án..." 
-                  className="w-full border-2 border-gray-200 p-4 rounded-xl font-black text-center text-xl outline-none focus:border-black transition-colors bg-gray-50 focus:bg-white shadow-inner" 
-                  value={answers[q.id]||''} onChange={e=>setAnswers({...answers, [q.id]: e.target.value})}
-                />
-              )}
+
+        <div className="w-1/3 bg-white border-l border-gray-200 h-full flex flex-col shadow-2xl relative z-10">
+          <div className="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
+            <div>
+               <h3 className="font-black text-lg text-gray-800 line-clamp-1">{exam.title}</h3>
+               {currentUser.role === 'teacher' ? (
+                 <span className="text-xs font-bold text-orange-500 bg-orange-100 px-2 py-0.5 rounded-full mt-1 inline-block">Xem trước (Không lưu điểm)</span>
+               ) : (
+                 isExamMode ? (
+                   <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded flex items-center gap-1 mt-1 w-max"><ShieldAlert size={12}/> Đang bật giám sát</span>
+                 ) : (
+                   <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1 mt-1 w-max"><BookOpen size={12}/> Luyện tập tự do</span>
+                 )
+               )}
             </div>
-          ))}
+            <button onClick={submitExam} className="bg-black text-white px-5 py-2.5 rounded-xl font-black hover:bg-gray-800 hover:-translate-y-0.5 transition-all shadow-md hover:shadow-lg">NỘP BÀI</button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-gray-50/50">
+            {(exam.questions || []).map((q, i) => (
+              <div key={q.id} className="p-5 border-2 border-gray-100 rounded-2xl bg-white shadow-sm hover:border-gray-300 transition-colors">
+                <h4 className="font-black mb-4 text-gray-800">Câu {i + 1}</h4>
+                
+                {q.type === 'mcq4' && (
+                  <div className="flex gap-4 justify-center">
+                    {['A', 'B', 'C', 'D'].map(opt => (
+                      <button
+                        key={opt} onClick={() => handleSelect(q.id, opt)}
+                        className={`w-14 h-14 rounded-full border-2 font-black text-xl transition-all duration-300 ${answers[q.id] === opt ? 'bg-black text-white border-black scale-110 shadow-lg' : 'border-gray-200 text-gray-500 hover:bg-gray-50 hover:border-gray-400'}`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {q.type === 'tf' && (
+                  <div className="flex gap-4 justify-center">
+                    {['Đúng', 'Sai'].map(opt => (
+                      <button
+                        key={opt} onClick={() => handleSelect(q.id, opt)}
+                        className={`flex-1 py-3 rounded-xl border-2 font-black text-lg transition-all duration-300 ${answers[q.id] === opt ? 'bg-black text-white border-black shadow-lg scale-105' : 'border-gray-200 text-gray-500 hover:bg-gray-50 hover:border-gray-400'}`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {q.type === 'short' && (
+                  <input 
+                    type="text" placeholder="Nhập đáp án..." 
+                    className="w-full border-2 border-gray-200 p-4 rounded-xl font-black text-center text-xl outline-none focus:border-black transition-colors bg-gray-50 focus:bg-white shadow-inner" 
+                    value={answers[q.id]||''} onChange={e=>setAnswers({...answers, [q.id]: e.target.value})}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -879,7 +898,7 @@ function AuthScreen({ authMode, setAuthMode, authForm, setAuthForm, handleAuth }
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md animate-pop border border-gray-100">
-        <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-3 hover:rotate-6 transition-transform shadow-lg">
+        <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-3 hover:rotate-6 transition-transform">
            <Layout size={32} />
         </div>
         <h1 className="text-3xl font-black text-center mb-2 tracking-tight">EduSheet</h1>
