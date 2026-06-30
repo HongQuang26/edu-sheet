@@ -13,7 +13,7 @@ import {
 // ==========================================
 // ⚠️ BƯỚC QUAN TRỌNG: DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO 2 DÒNG DƯỚI ĐÂY
 // ==========================================
-const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co/rest/v1/';
+const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
