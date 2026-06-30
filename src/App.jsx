@@ -690,7 +690,13 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
 }
 
 function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState, supabase }) {
-  const [answers, setAnswers] = useState({});
+  // KHỞI TẠO BẰNG CÁCH TÌM BẢN NHÁP TRONG TRÌNH DUYỆT (NẾU CÓ)
+  const [answers, setAnswers] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`draft_${exam.id}_${currentUser.id}`);
+      return saved ? JSON.parse(saved) : {};
+    } catch(e) { return {}; }
+  });
   const [cheatWarning, setCheatWarning] = useState(false);
   const [cheatCount, setCheatCount] = useState(0);
   const isExamMode = exam.exam_type === 'exam'; // Kiểm tra xem có phải là bài Thi Thật không
@@ -706,7 +712,12 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
   }, [isExamMode]);
 
   const handleSelect = (qId, val) => {
-    setAnswers({ ...answers, [qId]: val });
+    const newAnswers = { ...answers, [qId]: val };
+    setAnswers(newAnswers);
+    // TỰ ĐỘNG LƯU NHÁP VÀO BỘ NHỚ MÁY TÍNH SAU MỖI LẦN CHỌN
+    try {
+      localStorage.setItem(`draft_${exam.id}_${currentUser.id}`, JSON.stringify(newAnswers));
+    } catch(e) {}
   };
 
   const submitExam = async () => {
@@ -733,6 +744,9 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
       };
       await supabase.from('edu_results').insert([newResult]);
       setResultsState([...resultsState, newResult]);
+      
+      // NỘP BÀI THÀNH CÔNG THÌ DỌN DẸP BẢN NHÁP
+      try { localStorage.removeItem(`draft_${exam.id}_${currentUser.id}`); } catch(e){}
     }
 
     navigate('exam_result', { exam: { ...exam, results } });
