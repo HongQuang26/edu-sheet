@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // ⚠️ QUAN TRỌNG: KHI CHẠY TRÊN MÁY TÍNH CỦA BẠN (VS CODE), HÃY XÓA DẤU "//" Ở ĐẦU DÒNG DƯỚI ĐÂY:
-// import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
