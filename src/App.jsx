@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js'; // BẢN CHÍNH THỨC 100%
+import { createClient } from '@supabase/supabase-js'; 
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
   CheckCircle, XCircle, PlayCircle, AlertTriangle, 
   ChevronRight, ArrowLeft, Eye, Layout, Trash2, Save, 
-  Link as LinkIcon, Download, Clock, Calendar 
+  Link as LinkIcon, Download, Clock, Calendar, ShieldAlert, UserMinus
 } from 'lucide-react';
 
 // ==========================================
-// ⚠️ BẠN HÃY DÁN URL VÀ KEY SUPABASE VÀO 2 DÒNG DƯỚI ĐÂY
+// ⚠️ DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO 2 DÒNG DƯỚI ĐÂY
 // ==========================================
 const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
@@ -144,7 +144,7 @@ export default function App() {
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8 relative">
         {currentView === 'dashboard' && <Dashboard currentUser={currentUser} classes={classes} setClasses={setClasses} enrollments={enrollments} setEnrollments={setEnrollments} navigate={navigate} supabase={supabase} />}
-        {currentView === 'class' && <ClassDetail currentUser={currentUser} cls={selectedClass} exams={exams.filter(e => e.classId === selectedClass.id)} enrollments={enrollments} allUsers={allUsers} results={results} navigate={navigate} setExams={setExams} supabase={supabase} />}
+        {currentView === 'class' && <ClassDetail currentUser={currentUser} cls={selectedClass} exams={exams.filter(e => e.classId === selectedClass.id)} enrollments={enrollments} setEnrollments={setEnrollments} allUsers={allUsers} results={results} navigate={navigate} setExams={setExams} supabase={supabase} />}
         {currentView === 'create_exam' && <ExamCreator cls={selectedClass} navigate={navigate} setExams={setExams} exams={exams} supabase={supabase} />}
         {currentView === 'exam_taker' && <ExamTaker exam={selectedExam} navigate={navigate} currentUser={currentUser} resultsState={results} setResultsState={setResults} supabase={supabase} />}
         {currentView === 'exam_result' && <ExamResult exam={selectedExam} results={selectedExam.results} navigate={navigate} currentUser={currentUser} />}
@@ -208,6 +208,18 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
     navigate('class', { cls: found });
   };
 
+  // TÍNH NĂNG MỚI: XÓA LỚP HỌC
+  const handleDeleteClass = async (e, classObj) => {
+    e.stopPropagation(); // Ngăn việc click vào lớp khi bấm nút xóa
+    if(!window.confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn lớp "${classObj.name}" không?\nMọi dữ liệu liên quan sẽ bị ẩn đi.`)) return;
+
+    // Xóa lớp khỏi cơ sở dữ liệu
+    await supabase.from('edu_classes').delete().eq('id', classObj.id);
+    // Cập nhật lại màn hình
+    setClasses(prev => prev.filter(c => c.id !== classObj.id));
+    alert('Đã xóa lớp thành công!');
+  };
+
   return (
     <div className="space-y-6 page-transition">
       {/* Giao diện tạo/join lớp */}
@@ -265,12 +277,20 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
           {myClasses.map((cls, idx) => (
             <div key={cls.id} onClick={() => navigate('class', { cls })} 
-                 className="bg-white border border-gray-200 p-6 rounded-3xl hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group"
+                 className="bg-white border border-gray-200 p-6 rounded-3xl hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group relative"
                  style={{ animationDelay: `${idx * 0.1}s` }}>
+              
+              {/* Nút Xóa Lớp (Chỉ Giáo Viên) */}
+              {currentUser.role === 'teacher' && (
+                <button onClick={(e) => handleDeleteClass(e, cls)} className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Xóa lớp học">
+                  <Trash2 size={20} />
+                </button>
+              )}
+
               <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-5 border border-blue-100 group-hover:scale-110 transition-transform duration-300">
                 <BookOpen size={28} />
               </div>
-              <h3 className="text-xl font-black mb-2 truncate text-gray-800">{cls.name}</h3>
+              <h3 className="text-xl font-black mb-2 truncate text-gray-800 pr-8">{cls.name}</h3>
               {currentUser.role === 'teacher' && (
                 <p className="text-gray-500 text-sm mb-5 font-medium">Mã chia sẻ: <span className="font-mono font-bold bg-gray-100 text-black px-2 py-1 rounded-md">{cls.code}</span></p>
               )}
@@ -285,34 +305,29 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
   );
 }
 
-function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, navigate, setExams, supabase }) {
+function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, allUsers, results, navigate, setExams, supabase }) {
   const [activeTab, setActiveTab] = useState('exams'); 
-  const [extendingExam, setExtendingExam] = useState(null); // Trạng thái bài nào đang được gia hạn
-  const [newDeadline, setNewDeadline] = useState(''); // Lưu thời gian mới
+  const [extendingExam, setExtendingExam] = useState(null); 
+  const [newDeadline, setNewDeadline] = useState(''); 
 
   const joinLink = `${window.location.origin}${window.location.pathname}?join=${cls.code}`;
   const classStudents = enrollments.filter(e => e.class_id === cls.id).map(e => allUsers.find(u => u.id === e.student_id)).filter(Boolean); 
 
-  // Danh sách bài tập hiển thị (Loại bỏ các bài đã XÓA)
   const visibleExams = exams.filter(e => !e.is_hidden);
 
   const copyLink = () => { navigator.clipboard.writeText(joinLink); alert('Đã copy link mời tham gia lớp!'); };
   const exportPDF = () => { window.print(); };
 
-  // XÓA ĐỀ THI VÀ XÓA FILE PDF
+  // XÓA ĐỀ THI
   const handleDeleteExam = async (exam) => {
     if(!window.confirm(`Bạn có chắc muốn xóa đề "${exam.title}" không? \nTệp PDF sẽ bị xóa vĩnh viễn để giải phóng dung lượng máy chủ.\n(Điểm của học sinh vẫn sẽ được giữ lại trong Bảng điểm).`)) return;
 
-    // 1. Vào nhà kho (Storage) xé bỏ tờ giấy PDF
     if (exam.fileUrl && exam.fileUrl !== 'fake-url') {
       const fileName = exam.fileUrl.split('/').pop();
       await supabase.storage.from('exams').remove([fileName]);
     }
 
-    // 2. Đánh dấu Đề thi này là "Đã xóa" và dọn dẹp fileUrl
     await supabase.from('edu_exams').update({ fileUrl: null, is_hidden: true }).eq('id', exam.id);
-    
-    // Cập nhật lại giao diện ngay lập tức
     setExams(prev => prev.map(e => e.id === exam.id ? { ...e, fileUrl: null, is_hidden: true } : e));
     alert('Đã dọn dẹp file và xóa bài tập thành công!');
   };
@@ -323,6 +338,18 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
     setExams(prev => prev.map(e => e.id === extendingExam.id ? { ...e, deadline: newDeadline } : e));
     setExtendingExam(null);
     setNewDeadline('');
+  };
+
+  // TÍNH NĂNG MỚI: XÓA HỌC SINH KHỎI LỚP
+  const handleRemoveStudent = async (student) => {
+    if(!window.confirm(`Bạn có chắc muốn mời học sinh "${student.name}" ra khỏi lớp không?`)) return;
+    
+    // Xóa record trong bảng enrollments
+    await supabase.from('edu_enrollments').delete().match({ class_id: cls.id, student_id: student.id });
+    
+    // Cập nhật lại giao diện
+    setEnrollments(prev => prev.filter(e => !(e.class_id === cls.id && e.student_id === student.id)));
+    alert(`Đã mời học sinh ${student.name} ra khỏi lớp!`);
   };
 
   return (
@@ -377,7 +404,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
         </div>
       )}
 
-      {/* --- TAB BÀI TẬP (Chỉ hiển thị bài chưa bị xóa) --- */}
+      {/* --- TAB BÀI TẬP --- */}
       {activeTab === 'exams' && (
         <div className="space-y-6 no-print animate-fade-in-down">
           {currentUser.role === 'teacher' && (
@@ -395,25 +422,34 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
                 {visibleExams.map((exam) => {
                   const isExpired = exam.deadline && new Date(exam.deadline) < new Date();
                   const deadlineText = exam.deadline ? new Date(exam.deadline).toLocaleString('vi-VN') : 'Không giới hạn';
+                  const isExamMode = exam.exam_type === 'exam'; // Phân biệt loại bài
 
                   return (
                     <div key={exam.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4 group">
                       <div className="flex items-center gap-5">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border group-hover:scale-110 transition-transform ${isExpired ? 'bg-red-50 text-red-500 border-red-100' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
-                          {isExpired ? <Clock size={28} /> : <FileText size={28} />}
+                        {/* Icon đổi màu tùy theo loại bài và hạn nộp */}
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border group-hover:scale-110 transition-transform ${isExpired ? 'bg-red-50 text-red-500 border-red-100' : isExamMode ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
+                          {isExpired ? <Clock size={28} /> : isExamMode ? <ShieldAlert size={28} /> : <FileText size={28} />}
                         </div>
                         <div>
-                          <h3 className="font-black text-lg text-gray-800 mb-1 group-hover:text-black transition-colors">{exam.title}</h3>
+                          <div className="flex items-center gap-2 mb-1">
+                             <h3 className="font-black text-lg text-gray-800 group-hover:text-black transition-colors">{exam.title}</h3>
+                             {isExamMode ? (
+                               <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Thi thật</span>
+                             ) : (
+                               <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Luyện tập</span>
+                             )}
+                          </div>
                           <div className="flex gap-4">
                             <p className="text-sm text-gray-500 font-bold">{exam.questions?.length || 0} câu hỏi</p>
                             <p className={`text-sm font-bold flex items-center gap-1 ${isExpired ? 'text-red-500' : 'text-blue-500'}`}>
-                              <Calendar size={14}/> Hạn nộp: {deadlineText}
+                              <Calendar size={14}/> Hạn: {deadlineText}
                             </p>
                           </div>
                         </div>
                       </div>
                       
-                      {/* KHU VỰC NÚT BẤM (HỌC SINH VÀ GIÁO VIÊN) */}
+                      {/* KHU VỰC NÚT BẤM */}
                       <div className="flex gap-2">
                         {currentUser.role === 'student' ? (
                           isExpired ? (
@@ -422,7 +458,6 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
                             <button onClick={() => navigate('exam_taker', { exam })} className="bg-black text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-gray-800 hover:scale-105 shadow-md transition-all">Làm bài</button>
                           )
                         ) : (
-                          // Nút công cụ dành cho Giáo viên
                           <>
                             <button onClick={() => {setExtendingExam(exam); setNewDeadline(exam.deadline || '');}} className="text-blue-600 font-bold flex items-center gap-1.5 bg-blue-50 px-4 py-2.5 rounded-xl hover:bg-blue-100 transition-all hover:scale-105" title="Gia hạn thời gian">
                               <Clock size={16} /> Gia hạn
@@ -430,8 +465,8 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
                             <button onClick={() => handleDeleteExam(exam)} className="text-red-500 font-bold flex items-center gap-1.5 bg-red-50 px-4 py-2.5 rounded-xl hover:bg-red-100 transition-all hover:scale-105" title="Xóa đề giải phóng dung lượng">
                               <Trash2 size={16} /> Xóa
                             </button>
-                            <button onClick={() => navigate('exam_taker', { exam })} className="text-gray-600 font-bold flex items-center gap-1.5 bg-gray-100 px-4 py-2.5 rounded-xl hover:bg-gray-200 hover:text-black transition-all hover:scale-105" title="Xem thử giao diện học sinh">
-                              <Eye size={16} /> Xem trước
+                            <button onClick={() => navigate('exam_taker', { exam })} className="text-gray-600 font-bold flex items-center gap-1.5 bg-gray-100 px-4 py-2.5 rounded-xl hover:bg-gray-200 hover:text-black transition-all hover:scale-105" title="Xem thử">
+                              <Eye size={16} /> Xem
                             </button>
                           </>
                         )}
@@ -445,12 +480,12 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
         </div>
       )}
 
-      {/* --- TAB BẢNG ĐIỂM (Hiển thị CẢ BÀI ĐÃ XÓA) --- */}
+      {/* --- TAB BẢNG ĐIỂM VÀ QUẢN LÝ HỌC SINH --- */}
       {activeTab === 'students' && currentUser.role === 'teacher' && (
         <div className="space-y-6 animate-fade-in-down">
           <div className="flex justify-between items-center no-print">
-            <h2 className="text-2xl font-black">Bảng điểm tổng hợp</h2>
-            <button onClick={exportPDF} className="bg-white border-2 border-gray-200 px-4 py-2 rounded-xl flex items-center gap-2 hover:border-black hover:bg-gray-50 font-bold transition-all hover:-translate-y-0.5">
+            <h2 className="text-2xl font-black">Bảng điểm & Học sinh</h2>
+            <button onClick={exportPDF} className="bg-white border-2 border-gray-200 px-4 py-2 rounded-xl flex items-center gap-2 hover:border-black hover:bg-gray-50 font-bold transition-all hover:-translate-y-0.5 shadow-sm">
               <Download size={16} /> Xuất file (PDF)
             </button>
           </div>
@@ -464,17 +499,22 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
                     {exams.map(exam => (
                       <th key={exam.id} className="p-4 font-black border-b border-gray-200 whitespace-nowrap text-center min-w-[120px]">
                         {exam.title}
-                        {exam.is_hidden && <div className="text-[10px] text-red-400 mt-1 uppercase tracking-wider">(Đã xóa PDF)</div>}
+                        {/* Hiển thị chú thích nếu bài thi thật hoặc đã bị xóa */}
+                        <div className="flex justify-center gap-1 mt-1">
+                          {exam.exam_type === 'exam' && <span className="text-[10px] text-purple-500 bg-purple-50 px-1 rounded uppercase tracking-wider">Thi thật</span>}
+                          {exam.is_hidden && <span className="text-[10px] text-red-400 uppercase tracking-wider">(Đã xóa)</span>}
+                        </div>
                       </th>
                     ))}
+                    <th className="p-4 font-black border-b border-gray-200 text-right no-print">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {classStudents.length === 0 ? (
-                    <tr><td colSpan={exams.length + 1} className="p-8 text-center text-gray-400 font-bold">Chưa có học sinh nào tham gia lớp.</td></tr>
+                    <tr><td colSpan={exams.length + 2} className="p-8 text-center text-gray-400 font-bold">Chưa có học sinh nào tham gia lớp.</td></tr>
                   ) : (
                     classStudents.map(student => (
-                      <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={student.id} className="hover:bg-gray-50 transition-colors group">
                         <td className="p-4">
                           <div className="font-black text-gray-900">{student.name}</div>
                           <div className="text-xs text-gray-500 font-bold">{student.username}</div>
@@ -484,15 +524,29 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
                           return (
                             <td key={exam.id} className="p-4 text-center font-bold">
                               {hsResult ? (
-                                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-lg">
-                                  {hsResult.score} / {hsResult.total}
-                                </span>
+                                <div className="flex flex-col items-center justify-center gap-1">
+                                  <span className="bg-green-100 text-green-700 px-3 py-1 rounded-lg">
+                                    {hsResult.score} / {hsResult.total}
+                                  </span>
+                                  {/* CẢNH BÁO GIAN LẬN NẾU LÀ BÀI THI THẬT */}
+                                  {exam.exam_type === 'exam' && hsResult.cheat_count > 0 && (
+                                    <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm animate-pulse">
+                                      <AlertTriangle size={10} /> Gian lận: {hsResult.cheat_count}
+                                    </span>
+                                  )}
+                                </div>
                               ) : (
                                 <span className="text-gray-300">-</span>
                               )}
                             </td>
                           );
                         })}
+                        {/* NÚT XÓA HỌC SINH */}
+                        <td className="p-4 text-right no-print">
+                           <button onClick={() => handleRemoveStudent(student)} className="text-gray-400 hover:text-red-500 bg-white hover:bg-red-50 p-2 rounded-lg transition-colors border border-transparent hover:border-red-100 opacity-0 group-hover:opacity-100" title="Mời ra khỏi lớp">
+                             <UserMinus size={18} />
+                           </button>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -508,10 +562,11 @@ function ClassDetail({ currentUser, cls, exams, enrollments, allUsers, results, 
 
 function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
   const [title, setTitle] = useState('');
+  const [examType, setExamType] = useState('practice'); // MẶC ĐỊNH LÀ BÀI LUYỆN TẬP
   const [fileUploaded, setFileUploaded] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null); 
   const [questions, setQuestions] = useState([]);
-  const [deadline, setDeadline] = useState(''); // Đồng hồ hẹn giờ
+  const [deadline, setDeadline] = useState(''); 
   const [isSaving, setIsSaving] = useState(false);
 
   const addQuestion = (type) => {
@@ -539,7 +594,7 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
     const { data: urlData } = supabase.storage.from('exams').getPublicUrl(fileName);
     finalFileUrl = urlData.publicUrl;
 
-    // Lưu vào Database kèm deadline (hạn chót) và is_hidden mặc định là false
+    // Lưu vào Database kèm exam_type
     const newExam = { 
       id: 'e_' + Date.now(), 
       classId: cls.id, 
@@ -547,7 +602,8 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
       fileUrl: finalFileUrl, 
       questions,
       deadline: deadline || null,
-      is_hidden: false
+      is_hidden: false,
+      exam_type: examType // Lưu loại bài (practice hoặc exam)
     };
     
     await supabase.from('edu_exams').insert([newExam]);
@@ -574,28 +630,42 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
              <input type="text" className="w-full border-2 border-gray-200 p-4 rounded-xl mt-2 font-bold text-lg outline-none focus:border-black transition-colors bg-gray-50 focus:bg-white" value={title} onChange={e => setTitle(e.target.value)} placeholder="Nhập tên bài..." />
            </div>
 
+           {/* KHU VỰC CHỌN LOẠI BÀI */}
            <div>
-             <label className="font-black text-sm uppercase text-gray-700">2. Hạn nộp bài (Tùy chọn)</label>
+             <label className="font-black text-sm uppercase text-gray-700">2. Phân loại bài tập</label>
+             <div className="flex gap-4 mt-2">
+               <div onClick={() => setExamType('practice')} className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition-all ${examType === 'practice' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                 <div className="flex items-center gap-2 font-black text-green-700 mb-1"><BookOpen size={18}/> Luyện tập tự do</div>
+                 <p className="text-xs font-bold text-gray-500">Học sinh làm bài thoải mái, không bật giám sát gian lận.</p>
+               </div>
+               <div onClick={() => setExamType('exam')} className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition-all ${examType === 'exam' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                 <div className="flex items-center gap-2 font-black text-purple-700 mb-1"><ShieldAlert size={18}/> Thi nghiêm ngặt</div>
+                 <p className="text-xs font-bold text-gray-500">Bật giám sát gian lận. Cảnh báo nếu thoát màn hình.</p>
+               </div>
+             </div>
+           </div>
+
+           <div>
+             <label className="font-black text-sm uppercase text-gray-700">3. Hạn nộp bài (Tùy chọn)</label>
              <input type="datetime-local" className="w-full border-2 border-gray-200 p-4 rounded-xl mt-2 font-bold outline-none focus:border-black transition-colors bg-gray-50 focus:bg-white" value={deadline} onChange={e => setDeadline(e.target.value)} />
-             <p className="text-xs font-bold text-gray-400 mt-2">Bỏ trống nếu bạn không muốn giới hạn thời gian.</p>
            </div>
            
            <div>
-             <label className="font-black text-sm uppercase text-gray-700">3. Đính kèm File Đề (PDF)</label>
-             <div className={`border-2 border-dashed p-10 text-center mt-2 flex flex-col items-center rounded-2xl transition-colors duration-300 ${fileUploaded ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'}`}>
+             <label className="font-black text-sm uppercase text-gray-700">4. Đính kèm File Đề (PDF)</label>
+             <div className={`border-2 border-dashed p-10 text-center mt-2 flex flex-col items-center rounded-2xl transition-colors duration-300 ${fileUploaded ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'}`}>
                 <input type="file" accept=".pdf" onChange={(e) => { 
                   if(e.target.files.length) {
                     setFileUploaded(true);
                     setSelectedFile(e.target.files[0]);
                   }
                 }} className="cursor-pointer" />
-                {fileUploaded && <span className="mt-3 font-bold text-green-600">Đã chọn: {selectedFile?.name}</span>}
+                {fileUploaded && <span className="mt-3 font-bold text-blue-600">Đã chọn: {selectedFile?.name}</span>}
              </div>
            </div>
         </div>
 
-        <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm h-[75vh] flex flex-col transition-shadow hover:shadow-md">
-          <h3 className="font-black text-sm uppercase mb-4 text-gray-700">4. Thiết lập Phiếu Trả Lời</h3>
+        <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm h-[85vh] flex flex-col transition-shadow hover:shadow-md">
+          <h3 className="font-black text-sm uppercase mb-4 text-gray-700">5. Thiết lập Phiếu Trả Lời</h3>
           <div className="flex gap-2 mb-4 border-b border-gray-100 pb-4">
             <button onClick={() => addQuestion('mcq4')} className="bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 hover:-translate-y-0.5 transition-all">+ A-B-C-D</button>
             <button onClick={() => addQuestion('tf')} className="bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 hover:-translate-y-0.5 transition-all">+ Đúng/Sai</button>
@@ -623,13 +693,17 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
   const [answers, setAnswers] = useState({});
   const [cheatWarning, setCheatWarning] = useState(false);
   const [cheatCount, setCheatCount] = useState(0);
+  const isExamMode = exam.exam_type === 'exam'; // Kiểm tra xem có phải là bài Thi Thật không
 
   useEffect(() => {
-    const handleVis = () => { if (document.hidden) { setCheatWarning(true); setCheatCount(prev => prev + 1); } };
-    document.addEventListener("visibilitychange", handleVis);
-    window.addEventListener("blur", handleVis);
-    return () => { document.removeEventListener("visibilitychange", handleVis); window.removeEventListener("blur", handleVis); };
-  }, []);
+    // CHỈ BẬT CAMERA GIÁM THỊ NẾU LÀ BÀI THI THẬT
+    if (isExamMode) {
+      const handleVis = () => { if (document.hidden) { setCheatWarning(true); setCheatCount(prev => prev + 1); } };
+      document.addEventListener("visibilitychange", handleVis);
+      window.addEventListener("blur", handleVis);
+      return () => { document.removeEventListener("visibilitychange", handleVis); window.removeEventListener("blur", handleVis); };
+    }
+  }, [isExamMode]);
 
   const handleSelect = (qId, val) => {
     setAnswers({ ...answers, [qId]: val });
@@ -654,7 +728,7 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
         class_id: exam.classId,
         score,
         total: questionsList.length,
-        cheat_count: cheatCount,
+        cheat_count: isExamMode ? cheatCount : 0, // Chỉ lưu số lần gian lận nếu là chế độ thi
         details
       };
       await supabase.from('edu_results').insert([newResult]);
@@ -671,7 +745,7 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
           <div className="bg-white rounded-3xl p-8 max-w-sm text-center animate-pop shadow-2xl">
             <AlertTriangle size={64} className="text-red-500 mx-auto mb-4 animate-pulse" />
             <h3 className="text-2xl font-black text-red-600 mb-2">Cảnh báo gian lận!</h3>
-            <p className="font-bold text-gray-600 mb-6">Bạn vừa thoát màn hình (Lần {cheatCount})</p>
+            <p className="font-bold text-gray-600 mb-6">Bạn vừa thoát màn hình (Lần {cheatCount}).<br/>Hành động này sẽ bị báo cáo!</p>
             <button onClick={() => setCheatWarning(false)} className="w-full bg-black text-white py-3 rounded-xl font-bold hover:scale-105 transition-transform active:scale-95">Quay lại làm bài</button>
           </div>
         </div>
@@ -694,7 +768,15 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
         <div className="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
           <div>
              <h3 className="font-black text-lg text-gray-800 line-clamp-1">{exam.title}</h3>
-             {currentUser.role === 'teacher' && <span className="text-xs font-bold text-orange-500 bg-orange-100 px-2 py-0.5 rounded-full mt-1 inline-block">Chế độ xem trước (Không lưu điểm)</span>}
+             {currentUser.role === 'teacher' ? (
+               <span className="text-xs font-bold text-orange-500 bg-orange-100 px-2 py-0.5 rounded-full mt-1 inline-block">Xem trước (Không lưu điểm)</span>
+             ) : (
+               isExamMode ? (
+                 <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded flex items-center gap-1 mt-1 w-max"><ShieldAlert size={12}/> Đang bật giám sát</span>
+               ) : (
+                 <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1 mt-1 w-max"><BookOpen size={12}/> Luyện tập tự do</span>
+               )
+             )}
           </div>
           <button onClick={submitExam} className="bg-black text-white px-5 py-2.5 rounded-xl font-black hover:bg-gray-800 hover:-translate-y-0.5 transition-all shadow-md hover:shadow-lg">NỘP BÀI</button>
         </div>
