@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-// ⚠️ CHÚ Ý: KHI CHẠY TRÊN VS CODE CỦA BẠN, HÃY XÓA DẤU "//" Ở DÒNG DƯỚI ĐÂY:
-// import { createClient } from '@supabase/supabase-js';
+// BẢN CHÍNH THỨC 100%: Sử dụng thư viện kết nối thật
+import { createClient } from '@supabase/supabase-js';
 
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
@@ -11,31 +11,7 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// ĐOẠN MÔ PHỎNG BẮT BUỘC ĐỂ TRÁNH LỖI TRÊN MÔI TRƯỜNG XEM TRƯỚC NÀY
-// BẠN VUI LÒNG XÓA ĐOẠN NÀY KHI MANG SANG VS CODE NHÉ!
-const createClient = (url, key) => ({
-  auth: {
-    getSession: () => Promise.resolve({ data: { session: null } }),
-    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-    signInWithPassword: () => Promise.resolve({ error: new Error('Đây là môi trường xem trước. Bạn cần dùng VS Code để đăng nhập thật!') }),
-    signUp: () => Promise.resolve({ error: new Error('Vui lòng chạy trên VS Code để tạo tài khoản thật!') }),
-    signOut: () => Promise.resolve()
-  },
-  from: () => ({
-    select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null }) }), then: (cb) => cb({ data: [] }) }),
-    insert: () => Promise.resolve({ error: null })
-  }),
-  storage: {
-    from: () => ({
-      upload: () => Promise.resolve({ error: null }),
-      getPublicUrl: () => ({ data: { publicUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' } })
-    })
-  }
-});
-// ==========================================
-
-// ==========================================
-// ⚠️ BƯỚC QUAN TRỌNG: DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO 2 DÒNG DƯỚI ĐÂY
+// ⚠️ DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO 2 DÒNG DƯỚI ĐÂY
 // ==========================================
 const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
