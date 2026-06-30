@@ -125,11 +125,11 @@ export default function App() {
   if (!session || !currentUser) return <AuthScreen authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} handleAuth={handleAuth} />;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shrink-0 shadow-sm no-print animate-fade-in-down">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-black text-xl cursor-pointer tracking-tight hover:scale-105 transition-transform" onClick={() => navigate('dashboard')}>
-            <Layout size={24} /> EduSheet
+    <>
+      <MinimalBackground />
+      <div className="min-h-screen font-sans text-gray-900 flex flex-col relative z-10">
+        <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-20 shrink-0 shadow-sm no-print animate-fade-in-down">
+          <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-black text-gray-600 bg-gray-100 px-4 py-2 rounded-xl hidden sm:inline-block border border-gray-200">
@@ -753,7 +753,7 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
   };
 
   return (
-    <div className="h-[calc(100vh-64px)] flex bg-gray-100 overflow-hidden absolute inset-0 top-16 page-transition">
+    <div className="h-[calc(100vh-64px)] flex bg-transparent overflow-hidden absolute inset-0 top-16 page-transition">
       {cheatWarning && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 transition-opacity backdrop-blur-sm">
           <div className="bg-white rounded-3xl p-8 max-w-sm text-center animate-pop shadow-2xl">
@@ -897,46 +897,32 @@ function ExamResult({ exam, results, navigate, currentUser }) {
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-      <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p className="font-bold text-gray-600 animate-pulse">Đang tải dữ liệu...</p>
-    </div>
+    <>
+      <MinimalBackground />
+      <div className="min-h-screen flex flex-col items-center justify-center relative z-10">
+        <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="font-bold text-gray-600 animate-pulse">Đang tải dữ liệu...</p>
+      </div>
+    </>
   );
 }
 
 function AuthScreen({ authMode, setAuthMode, authForm, setAuthForm, handleAuth }) {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md animate-pop border border-gray-100">
-        <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-3 hover:rotate-6 transition-transform">
-           <Layout size={32} />
-        </div>
-        <h1 className="text-3xl font-black text-center mb-2 tracking-tight">EduSheet</h1>
-        <p className="text-gray-500 font-bold text-center mb-8">{authMode === 'login' ? 'Đăng nhập an toàn' : 'Tạo tài khoản mới'}</p>
-        
-        <div className="space-y-4">
-          {authMode === 'signup' && <input type="text" placeholder="Họ và tên" className="w-full border-2 border-gray-200 p-4 rounded-xl font-bold outline-none focus:border-black bg-gray-50 focus:bg-white transition-colors" onChange={e=>setAuthForm({...authForm, name: e.target.value})}/>}
-          <input type="email" placeholder="Email" className="w-full border-2 border-gray-200 p-4 rounded-xl font-bold outline-none focus:border-black bg-gray-50 focus:bg-white transition-colors" onChange={e=>setAuthForm({...authForm, email: e.target.value})}/>
-          <input type="password" placeholder="Mật khẩu" className="w-full border-2 border-gray-200 p-4 rounded-xl font-bold outline-none focus:border-black bg-gray-50 focus:bg-white transition-colors" onChange={e=>setAuthForm({...authForm, password: e.target.value})}/>
-          
-          {authMode === 'signup' && (
-             <div className="flex gap-4 p-4 bg-gray-100 rounded-xl justify-center mt-2 border border-gray-200">
-               <label className="flex items-center gap-2 cursor-pointer">
-                 <input type="radio" name="role" checked={authForm.role==='student'} onChange={()=>setAuthForm({...authForm, role:'student'})} className="w-5 h-5 text-black accent-black"/> 
-                 <span className="font-black text-sm">Học sinh</span>
-               </label>
-               <label className="flex items-center gap-2 cursor-pointer ml-4">
-                 <input type="radio" name="role" checked={authForm.role==='teacher'} onChange={()=>setAuthForm({...authForm, role:'teacher'})} className="w-5 h-5 text-black accent-black"/> 
-                 <span className="font-black text-sm">Giáo viên</span>
-               </label>
-             </div>
+    <>
+      <MinimalBackground />
+      <div className="min-h-screen flex items-center justify-center p-4 relative z-10">
+        <div className="bg-white/90 backdrop-blur-xl p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md animate-pop border border-gray-100 relative">
+          <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-3 hover:rotate-6 transition-transform shadow-lg">
+            <Layout size={32} />
+          </div>
           )}
           <button onClick={handleAuth} className="w-full bg-black text-white p-4 rounded-xl font-black text-lg hover:bg-gray-800 hover:-translate-y-1 transition-all shadow-lg mt-4">
             {authMode === 'login' ? 'ĐĂNG NHẬP' : 'TẠO TÀI KHOẢN'}
           </button>
         </div>
 
-        <div className="mt-8 text-center text-sm font-bold text-gray-500">
+        <div className="mt-8 text-center text-sm font-bold text-gray-500 relative z-10">
            {authMode === 'login' ? (
              <>Chưa có tài khoản? <button onClick={() => setAuthMode('signup')} className="text-black font-black hover:underline">Đăng ký ngay</button></>
            ) : (
@@ -944,6 +930,19 @@ function AuthScreen({ authMode, setAuthMode, authForm, setAuthForm, handleAuth }
            )}
         </div>
       </div>
+    </>
+  );
+}
+
+// === COMPONENT BACKGROUND MINIMALISM ===
+function MinimalBackground() {
+  return (
+    <div className="fixed inset-0 z-[-1] pointer-events-none bg-gray-50 flex justify-center overflow-hidden">
+      {/* Họa tiết lưới trang giấy (Grid) mờ dần xuống dưới */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.04)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_80%,transparent_100%)]"></div>
+      
+      {/* Vầng sáng Gradient (Ambient Light) phía trên */}
+      <div className="absolute top-[-20%] w-full max-w-3xl h-[600px] bg-gray-200/50 rounded-full blur-[120px]"></div>
     </div>
   );
 }
