@@ -863,20 +863,21 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase, showToast }) {
         <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm h-[85vh] flex flex-col transition-shadow hover:shadow-md">
           <h3 className="font-black text-sm uppercase mb-4 text-gray-700">5. Thiết lập Phiếu Trả Lời</h3>
           
+          {/* TÍNH NĂNG MỚI: Khu vực nhập số lượng tạo nhanh */}
           <div className="bg-gray-50 p-4 rounded-2xl mb-4 border border-gray-200">
-            <h4 className="font-bold text-sm mb-3 text-gray-600 flex items-center gap-2">⚡️ Tạo nhanh số lượng lớn:</h4>
+            <h4 className="font-bold text-sm mb-3 text-gray-600">Tạo nhanh số lượng lớn:</h4>
             <div className="flex flex-wrap gap-4 items-end">
               <div>
                 <label className="text-xs font-bold text-gray-500 block mb-1">A-B-C-D</label>
-                <input type="number" min="0" placeholder="VD: 5" value={bulkCounts.mcq4} onChange={e => setBulkCounts({...bulkCounts, mcq4: e.target.value})} className="w-20 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-black font-black text-center transition-colors" />
+                <input type="number" min="0" value={bulkCounts.mcq4} onChange={e => setBulkCounts({...bulkCounts, mcq4: e.target.value})} className="w-20 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-black font-black text-center transition-colors" />
               </div>
               <div>
                 <label className="text-xs font-bold text-gray-500 block mb-1">Đúng/Sai</label>
-                <input type="number" min="0" placeholder="VD: 5" value={bulkCounts.tf} onChange={e => setBulkCounts({...bulkCounts, tf: e.target.value})} className="w-20 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-black font-black text-center transition-colors" />
+                <input type="number" min="0" value={bulkCounts.tf} onChange={e => setBulkCounts({...bulkCounts, tf: e.target.value})} className="w-20 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-black font-black text-center transition-colors" />
               </div>
               <div>
                 <label className="text-xs font-bold text-gray-500 block mb-1">Trả lời ngắn</label>
-                <input type="number" min="0" placeholder="VD: 6" value={bulkCounts.short} onChange={e => setBulkCounts({...bulkCounts, short: e.target.value})} className="w-20 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-black font-black text-center transition-colors" />
+                <input type="number" min="0" value={bulkCounts.short} onChange={e => setBulkCounts({...bulkCounts, short: e.target.value})} className="w-20 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-black font-black text-center transition-colors" />
               </div>
               <button onClick={handleBulkAdd} className="bg-black text-white px-5 py-2.5 rounded-xl font-bold hover:bg-gray-800 transition-transform hover:scale-105 active:scale-95 h-[46px]">
                 TẠO NGAY
