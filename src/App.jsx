@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
-
-// Bật kết nối thật tới Supabase
 import { createClient } from '@supabase/supabase-js';
-
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
   CheckCircle, XCircle, PlayCircle, AlertTriangle, 
   ChevronRight, ArrowLeft, Eye, Layout, Trash2, Save, 
-  Link as LinkIcon, Download, Clock, Calendar, ShieldAlert, UserMinus, Info
+  Link as LinkIcon, Download, Clock, Calendar, ShieldAlert, UserMinus, Info, Flag
 } from 'lucide-react';
 
 // ==========================================
-// ⚠️ DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO ĐÂY
+// KẾT NỐI SUPABASE CHÍNH THỨC 
 // ==========================================
 const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
@@ -33,9 +30,9 @@ export default function App() {
   
   const [authMode, setAuthMode] = useState('login');
   const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', role: 'student', remember: true });
-  const [isLoading, setIsLoading] = useState(true); // Đặt mặc định true chờ tải
+  const [isLoading, setIsLoading] = useState(true);
 
-  // --- HỆ THỐNG THÔNG BÁO MƯỢT MÀ (TOAST & CONFIRM) ---
+  // Hệ thống thông báo và hộp thoại xác nhận mượt mà
   const [toast, setToast] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
 
@@ -54,7 +51,7 @@ export default function App() {
     });
   };
 
-  // 1. KIỂM TRA ĐĂNG NHẬP
+  // Kiểm tra đăng nhập
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -76,12 +73,11 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. LẤY HỒ SƠ & TẢI DỮ LIỆU
   const fetchUserProfile = async (userId) => {
     const { data } = await supabase.from('edu_users').select('*').eq('id', userId).single();
     if (data) {
       setCurrentUser(data);
-      // GIỮ NGUYÊN VỊ TRÍ KHI CHUYỂN TAB:
+      // Giữ nguyên view nếu đang ở trang con, chỉ chuyển nếu đang ở trang login
       setCurrentView(prevView => prevView === 'login' ? 'dashboard' : prevView);
       fetchData(); 
     }
@@ -96,7 +92,6 @@ export default function App() {
     supabase.from('edu_users').select('*').then(({data}) => data && setAllUsers(data));
   };
 
-  // 3. XỬ LÝ ĐĂNG NHẬP / ĐĂNG KÝ
   const handleAuth = async () => {
     if (!authForm.email || !authForm.password) return showToast('Vui lòng điền đủ Email và Mật khẩu!', 'error');
     setIsLoading(true);
@@ -154,7 +149,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col">
-      {/* THÔNG BÁO VÀ HỘP THOẠI TOÀN CỤC */}
       <Toast toast={toast} />
       <ConfirmModal confirmDialog={confirmDialog} setConfirmDialog={setConfirmDialog} />
 
@@ -200,7 +194,6 @@ export default function App() {
   );
 }
 
-// ================= COMPONENT TIỆN ÍCH (THÔNG BÁO VÀ HỘP THOẠI) =================
 function Toast({ toast }) {
   if (!toast) return null;
   const bgColors = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-blue-600' };
@@ -227,8 +220,6 @@ function ConfirmModal({ confirmDialog, setConfirmDialog }) {
     </div>
   );
 }
-
-// ================= CÁC COMPONENT GIAO DIỆN CON =================
 
 function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollments, navigate, supabase, showToast, showConfirm }) {
   const [joinCode, setJoinCode] = useState('');
@@ -621,7 +612,7 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase, showToast }) {
   const [selectedFile, setSelectedFile] = useState(null); 
   const [questions, setQuestions] = useState([]);
   const [deadline, setDeadline] = useState(''); 
-  const [duration, setDuration] = useState(''); // TÍNH NĂNG MỚI: Cài đặt số phút
+  const [duration, setDuration] = useState(''); 
   const [isSaving, setIsSaving] = useState(false);
 
   const addQuestion = (type) => {
@@ -699,7 +690,6 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase, showToast }) {
                </div>
              </div>
              
-             {/* Hiện ô nhập số phút nếu chọn Thi thật */}
              {examType === 'exam' && (
                <div className="mt-4 animate-fade-in-down">
                  <input type="number" placeholder="Thời gian làm bài (Phút) - Để trống nếu không tính giờ" className="w-full border-2 border-purple-200 p-4 rounded-xl font-bold outline-none focus:border-purple-500 transition-colors bg-purple-50 focus:bg-white text-purple-900 placeholder:text-purple-300" value={duration} onChange={e => setDuration(e.target.value)} min="1" />
@@ -755,29 +745,45 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
   const [answers, setAnswers] = useState({});
   const [cheatWarning, setCheatWarning] = useState(false);
   const [cheatCount, setCheatCount] = useState(0);
+  const [flagged, setFlagged] = useState({}); 
   const isExamMode = exam.exam_type === 'exam'; 
 
-  // ĐỒNG HỒ ĐẾM NGƯỢC
+  // Đồng hồ đếm ngược kiên cố
   const [timeLeft, setTimeLeft] = useState(() => {
-    if (isExamMode && exam.duration) return exam.duration * 60; // Đổi phút ra giây
+    if (isExamMode && exam.duration && currentUser?.role === 'student') {
+      const storageKey = `endTime_${exam.id}_${currentUser.id}`;
+      const storedEndTime = localStorage.getItem(storageKey);
+      
+      if (storedEndTime) {
+        const remaining = Math.floor((parseInt(storedEndTime) - Date.now()) / 1000);
+        return remaining > 0 ? remaining : 0;
+      } else {
+        const endTime = Date.now() + exam.duration * 60 * 1000;
+        localStorage.setItem(storageKey, endTime.toString());
+        return exam.duration * 60;
+      }
+    } else if (isExamMode && exam.duration) {
+      return exam.duration * 60; 
+    }
     return null;
   });
 
-  // Khôi phục nháp
   useEffect(() => {
     if (currentUser?.role === 'student') {
       const draft = localStorage.getItem(`draft_${exam.id}_${currentUser.id}`);
       if (draft) setAnswers(JSON.parse(draft));
+      
+      const flaggedDraft = localStorage.getItem(`flagged_${exam.id}_${currentUser.id}`);
+      if (flaggedDraft) setFlagged(JSON.parse(flaggedDraft));
     }
   }, []);
 
-  // Xử lý đồng hồ đếm lùi
   useEffect(() => {
     if (timeLeft === null) return;
     
     if (timeLeft <= 0) {
       showToast('Đã hết thời gian! Hệ thống tự động thu bài.', 'info');
-      submitExam(); // Bom nổ = Tự động nộp bài
+      submitExam(); 
       return;
     }
     
@@ -785,7 +791,6 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
     return () => clearInterval(timerId);
   }, [timeLeft]);
 
-  // Giám sát gian lận
   useEffect(() => {
     if (isExamMode) {
       const handleVis = () => { if (document.hidden) { setCheatWarning(true); setCheatCount(prev => prev + 1); } };
@@ -800,6 +805,14 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
     setAnswers(newAns);
     if (currentUser?.role === 'student') {
       localStorage.setItem(`draft_${exam.id}_${currentUser.id}`, JSON.stringify(newAns));
+    }
+  };
+
+  const toggleFlag = (qId) => {
+    const newFlagged = { ...flagged, [qId]: !flagged[qId] };
+    setFlagged(newFlagged);
+    if (currentUser?.role === 'student') {
+      localStorage.setItem(`flagged_${exam.id}_${currentUser.id}`, JSON.stringify(newFlagged));
     }
   };
 
@@ -828,7 +841,11 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
       await supabase.from('edu_results').insert([newResult]);
       setResultsState([...resultsState, newResult]);
       
-      try { localStorage.removeItem(`draft_${exam.id}_${currentUser.id}`); } catch(e){}
+      try { 
+        localStorage.removeItem(`draft_${exam.id}_${currentUser.id}`); 
+        localStorage.removeItem(`flagged_${exam.id}_${currentUser.id}`); 
+        localStorage.removeItem(`endTime_${exam.id}_${currentUser.id}`); 
+      } catch(e){}
     }
 
     showToast('Nộp bài thành công!');
@@ -873,16 +890,15 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
             <div>
                <h3 className="font-black text-lg text-gray-800 line-clamp-1">{exam.title}</h3>
                {currentUser.role === 'teacher' ? (
-                 <span className="text-xs font-bold text-orange-500 bg-orange-100 px-2 py-0.5 rounded-full mt-1 inline-block">Xem trước (Không lưu điểm)</span>
+                 <span className="text-xs font-bold text-orange-500 bg-orange-100 px-2 py-0.5 rounded-full mt-1 inline-block">Xem trước (Không lưu)</span>
                ) : (
                  <div className="flex items-center gap-2 mt-1">
                    {isExamMode ? (
-                     <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded flex items-center gap-1 w-max"><ShieldAlert size={12}/> Đang bật giám sát</span>
+                     <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded flex items-center gap-1 w-max"><ShieldAlert size={12}/> Giám sát</span>
                    ) : (
-                     <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1 w-max"><BookOpen size={12}/> Luyện tập tự do</span>
+                     <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1 w-max"><BookOpen size={12}/> Luyện tập</span>
                    )}
                    
-                   {/* ĐỒNG HỒ ĐẾM NGƯỢC HIỂN THỊ Ở ĐÂY */}
                    {timeLeft !== null && (
                      <span className={`text-[11px] font-black px-2 py-0.5 rounded flex items-center gap-1 w-max transition-colors ${timeLeft < 60 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-gray-200 text-gray-800'}`}>
                        <Clock size={12}/> {formatTime(timeLeft)}
@@ -896,8 +912,13 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
           
           <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-gray-50/50">
             {(exam.questions || []).map((q, i) => (
-              <div key={q.id} className="p-5 border-2 border-gray-100 rounded-2xl bg-white shadow-sm hover:border-gray-300 transition-colors">
-                <h4 className="font-black mb-4 text-gray-800">Câu {i + 1}</h4>
+              <div key={q.id} className={`p-5 border-2 rounded-2xl bg-white shadow-sm transition-colors ${flagged[q.id] ? 'border-orange-400 bg-orange-50/30' : 'border-gray-100 hover:border-gray-300'}`}>
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="font-black text-gray-800">Câu {i + 1}</h4>
+                  <button onClick={() => toggleFlag(q.id)} className={`p-2 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-bold ${flagged[q.id] ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400 hover:text-orange-500 hover:bg-orange-50'}`} title="Cắm cờ câu này để xem lại sau">
+                    <Flag size={16} className={flagged[q.id] ? "fill-orange-500" : ""} /> {flagged[q.id] ? 'Đã cắm cờ' : 'Cắm cờ'}
+                  </button>
+                </div>
                 
                 {q.type === 'mcq4' && (
                   <div className="flex gap-4 justify-center">
@@ -1054,7 +1075,6 @@ function AuthScreen({ authMode, setAuthMode, authForm, setAuthForm, handleAuth }
              </div>
           )}
           
-          {/* TÍNH NĂNG GHI NHỚ ĐĂNG NHẬP */}
           {authMode === 'login' && (
             <div className="flex items-center gap-2 mt-2 px-1">
               <input type="checkbox" id="remember" className="w-4 h-4 accent-black cursor-pointer" checked={authForm.remember} onChange={e => setAuthForm({...authForm, remember: e.target.checked})} />
