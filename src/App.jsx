@@ -322,10 +322,8 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
 
       <div className="space-y-8 page-transition">
         
-        {/* TÍNH NĂNG MỚI: BẢNG TỔNG KẾT VÀ THỐNG KÊ (CHỈ DÀNH CHO HỌC SINH) */}
         {currentUser.role === 'student' && (
           <div className="space-y-6">
-            {/* 3 Thẻ Chỉ số */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
                 <BarChart3 className="absolute top-4 right-4 opacity-20" size={80} />
@@ -344,10 +342,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
               </div>
             </div>
 
-            {/* Biểu đồ & BXH */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Biểu đồ học tập */}
               <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">
                 <div className="flex items-center gap-2 mb-6">
                   <TrendingUp className="text-blue-500" />
@@ -375,7 +370,6 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                 )}
               </div>
 
-              {/* Bảng Vàng (Leaderboard) */}
               <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm flex flex-col">
                 <div className="flex items-center gap-2 mb-6">
                   <Award className="text-orange-500" />
@@ -404,7 +398,6 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                   </div>
                 )}
               </div>
-
             </div>
           </div>
         )}
@@ -571,7 +564,6 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
           </div>
         )}
 
-        {/* TAB BÀI TẬP */}
         {activeTab === 'exams' && (
           <div className="space-y-6 no-print animate-fade-in-down">
             {currentUser.role === 'teacher' && (
@@ -623,7 +615,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
                             isExpired ? (
                               <button disabled className="bg-gray-200 text-gray-400 px-8 py-3 rounded-xl text-sm font-bold cursor-not-allowed">Đã hết hạn</button>
                             ) : hasReachedMaxAttempts ? (
-                              <button disabled className="bg-red-100 text-red-500 px-6 py-3 rounded-xl text-sm font-bold cursor-not-allowed border border-red-200">Đã hết {exam.maxAttempts} lượt làm bài</button>
+                              <button disabled className="bg-red-100 text-red-500 px-6 py-3 rounded-xl text-sm font-bold cursor-not-allowed border border-red-200">Đã hết {exam.maxAttempts} lượt</button>
                             ) : (
                               <div className="flex flex-col items-end gap-1">
                                 <button onClick={() => navigate('exam_taker', { exam })} className="bg-black text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-gray-800 hover:scale-105 shadow-md transition-all w-full">Làm bài</button>
@@ -742,9 +734,32 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase, showToast }) {
   const [maxAttempts, setMaxAttempts] = useState(''); 
   const [isSaving, setIsSaving] = useState(false);
 
+  const [bulkCounts, setBulkCounts] = useState({ mcq4: '', tf: '', short: '' });
+
   const addQuestion = (type) => {
     const defaultCorrect = type === 'mcq4' ? 'A' : type === 'tf' ? 'Đúng' : '';
     setQuestions([...questions, { id: 'q_' + Date.now(), type, correct: defaultCorrect, videoUrl: '' }]);
+  };
+
+  const handleBulkAdd = () => {
+    let newQs = [];
+    const timestamp = Date.now();
+    
+    const countMcq = parseInt(bulkCounts.mcq4) || 0;
+    const countTf = parseInt(bulkCounts.tf) || 0;
+    const countShort = parseInt(bulkCounts.short) || 0;
+
+    if (countMcq === 0 && countTf === 0 && countShort === 0) {
+      return showToast('Vui lòng nhập số lượng câu hỏi muốn tạo!', 'info');
+    }
+
+    for(let i=0; i<countMcq; i++) newQs.push({ id: `q_${timestamp}_mcq_${i}`, type: 'mcq4', correct: 'A', videoUrl: '' });
+    for(let i=0; i<countTf; i++) newQs.push({ id: `q_${timestamp}_tf_${i}`, type: 'tf', correct: 'Đúng', videoUrl: '' });
+    for(let i=0; i<countShort; i++) newQs.push({ id: `q_${timestamp}_sh_${i}`, type: 'short', correct: '', videoUrl: '' });
+
+    setQuestions([...questions, ...newQs]);
+    setBulkCounts({ mcq4: '', tf: '', short: '' }); 
+    showToast(`Đã tạo nhanh ${newQs.length} câu hỏi!`, 'success');
   };
 
   const updateQuestion = (id, field, value) => {
@@ -847,20 +862,64 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase, showToast }) {
 
         <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm h-[85vh] flex flex-col transition-shadow hover:shadow-md">
           <h3 className="font-black text-sm uppercase mb-4 text-gray-700">5. Thiết lập Phiếu Trả Lời</h3>
+          
+          <div className="bg-gray-50 p-4 rounded-2xl mb-4 border border-gray-200">
+            <h4 className="font-bold text-sm mb-3 text-gray-600 flex items-center gap-2">⚡️ Tạo nhanh số lượng lớn:</h4>
+            <div className="flex flex-wrap gap-4 items-end">
+              <div>
+                <label className="text-xs font-bold text-gray-500 block mb-1">A-B-C-D</label>
+                <input type="number" min="0" placeholder="VD: 5" value={bulkCounts.mcq4} onChange={e => setBulkCounts({...bulkCounts, mcq4: e.target.value})} className="w-20 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-black font-black text-center transition-colors" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 block mb-1">Đúng/Sai</label>
+                <input type="number" min="0" placeholder="VD: 5" value={bulkCounts.tf} onChange={e => setBulkCounts({...bulkCounts, tf: e.target.value})} className="w-20 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-black font-black text-center transition-colors" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 block mb-1">Trả lời ngắn</label>
+                <input type="number" min="0" placeholder="VD: 6" value={bulkCounts.short} onChange={e => setBulkCounts({...bulkCounts, short: e.target.value})} className="w-20 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-black font-black text-center transition-colors" />
+              </div>
+              <button onClick={handleBulkAdd} className="bg-black text-white px-5 py-2.5 rounded-xl font-bold hover:bg-gray-800 transition-transform hover:scale-105 active:scale-95 h-[46px]">
+                TẠO NGAY
+              </button>
+            </div>
+          </div>
+
           <div className="flex gap-2 mb-4 border-b border-gray-100 pb-4">
-            <button onClick={() => addQuestion('mcq4')} className="bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 hover:-translate-y-0.5 transition-all">+ A-B-C-D</button>
-            <button onClick={() => addQuestion('tf')} className="bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 hover:-translate-y-0.5 transition-all">+ Đúng/Sai</button>
-            <button onClick={() => addQuestion('short')} className="bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 hover:-translate-y-0.5 transition-all">+ Điền đáp án</button>
+            <button onClick={() => addQuestion('mcq4')} className="bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 hover:-translate-y-0.5 transition-all">+ Thêm 1 câu A-B-C-D</button>
+            <button onClick={() => addQuestion('tf')} className="bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 hover:-translate-y-0.5 transition-all">+ Thêm 1 câu Đúng/Sai</button>
+            <button onClick={() => addQuestion('short')} className="bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 hover:-translate-y-0.5 transition-all">+ Thêm 1 câu Điền đáp án</button>
           </div>
           
           <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-             {questions.length === 0 && <div className="text-center text-gray-400 font-bold mt-10">Chưa có câu hỏi nào. Bấm nút phía trên để thêm nhé!</div>}
+             {questions.length === 0 && <div className="text-center text-gray-400 font-bold mt-10">Chưa có câu hỏi nào. Dùng công cụ phía trên để tạo nhé!</div>}
              {questions.map((q, i) => (
                 <div key={q.id} className="p-5 bg-gray-50 border border-gray-100 rounded-2xl relative animate-pop">
                   <button onClick={() => setQuestions(questions.filter(item => item.id !== q.id))} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18}/></button>
                   <h4 className="font-black mb-3 text-gray-800">Câu {i + 1}</h4>
-                  <input type="text" placeholder={q.type === 'short' ? "Nhập đáp án (Dùng dấu | nếu có nhiều đáp án. VD: A|B)" : "Nhập đáp án đúng..."} className="p-3 border-2 border-gray-200 rounded-xl font-bold w-full mb-3 outline-none focus:border-black transition-colors" value={q.correct} onChange={e => updateQuestion(q.id, 'correct', e.target.value)} />
-                  <input type="text" placeholder="Link video giải (tùy chọn)" className="p-3 border-2 border-gray-200 rounded-xl text-sm w-full outline-none focus:border-blue-500 transition-colors" value={q.videoUrl} onChange={e => updateQuestion(q.id, 'videoUrl', e.target.value)} />
+                  
+                  {q.type === 'mcq4' && (
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="font-bold text-sm text-gray-600">Đáp án đúng:</span>
+                      {['A', 'B', 'C', 'D'].map(opt => (
+                        <button key={opt} onClick={() => updateQuestion(q.id, 'correct', opt)} className={`w-10 h-10 rounded-full border-2 font-black transition-all ${q.correct === opt ? 'bg-black text-white border-black scale-110 shadow-md' : 'border-gray-200 text-gray-400 hover:bg-gray-200 hover:text-gray-600'}`}>{opt}</button>
+                      ))}
+                    </div>
+                  )}
+
+                  {q.type === 'tf' && (
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="font-bold text-sm text-gray-600">Đáp án đúng:</span>
+                      {['Đúng', 'Sai'].map(opt => (
+                        <button key={opt} onClick={() => updateQuestion(q.id, 'correct', opt)} className={`px-4 py-2 rounded-xl border-2 font-black transition-all ${q.correct === opt ? 'bg-black text-white border-black scale-105 shadow-md' : 'border-gray-200 text-gray-400 hover:bg-gray-200 hover:text-gray-600'}`}>{opt}</button>
+                      ))}
+                    </div>
+                  )}
+
+                  {q.type === 'short' && (
+                    <input type="text" placeholder="Nhập đáp án (Dùng dấu | nếu có nhiều đáp án. VD: A|B)" className="p-3 border-2 border-gray-200 rounded-xl font-bold w-full mb-3 outline-none focus:border-black transition-colors" value={q.correct} onChange={e => updateQuestion(q.id, 'correct', e.target.value)} />
+                  )}
+
+                  <input type="text" placeholder="Link video giải (tùy chọn)" className="p-3 border-2 border-gray-200 rounded-xl text-sm w-full outline-none focus:border-blue-500 transition-colors bg-white" value={q.videoUrl} onChange={e => updateQuestion(q.id, 'videoUrl', e.target.value)} />
                 </div>
              ))}
           </div>
