@@ -356,33 +356,35 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
 
       <div className="space-y-8 page-transition">
         
-        {/* ==================================================== */}
-        {/* BẢNG TỔNG KẾT VÀ THỐNG KÊ (DÀNH CHO HỌC SINH) */}
-        {/* ==================================================== */}
+        {/* TÍNH NĂNG MỚI: BẢNG TỔNG KẾT VÀ THỐNG KÊ (CHỈ DÀNH CHO HỌC SINH) */}
         {currentUser.role === 'student' && (
           <div className="space-y-6">
+            {/* 3 Thẻ Chỉ số */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                <BarChart3 className="absolute top-4 right-4 opacity-20" size={80} />
-                <h3 className="font-bold text-blue-200 mb-1">Điểm Trung Bình</h3>
-                <div className="text-5xl font-black">{avgScore} <span className="text-2xl text-blue-300">/10</span></div>
+              <div className="bg-white border border-gray-200 rounded-3xl p-6 text-gray-900 shadow-sm relative overflow-hidden group hover:shadow-md hover:-translate-y-1 transition-all">
+                <BarChart3 className="absolute top-4 right-4 text-gray-100 group-hover:text-gray-200 transition-colors" size={80} />
+                <h3 className="font-bold text-gray-500 mb-1 relative z-10">Điểm Trung Bình</h3>
+                <div className="text-5xl font-black relative z-10">{avgScore} <span className="text-2xl text-gray-400">/10</span></div>
               </div>
-              <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                <CheckCircle className="absolute top-4 right-4 opacity-20" size={80} />
-                <h3 className="font-bold text-purple-200 mb-1">Tổng Số Bài Đã Làm</h3>
-                <div className="text-5xl font-black">{totalExamsTaken}</div>
+              <div className="bg-white border border-gray-200 rounded-3xl p-6 text-gray-900 shadow-sm relative overflow-hidden group hover:shadow-md hover:-translate-y-1 transition-all">
+                <CheckCircle className="absolute top-4 right-4 text-gray-100 group-hover:text-gray-200 transition-colors" size={80} />
+                <h3 className="font-bold text-gray-500 mb-1 relative z-10">Tổng Số Bài Đã Làm</h3>
+                <div className="text-5xl font-black relative z-10">{totalExamsTaken}</div>
               </div>
-              <div className="bg-gradient-to-br from-orange-500 to-orange-700 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                <Trophy className="absolute top-4 right-4 opacity-20" size={80} />
-                <h3 className="font-bold text-orange-200 mb-1">Thứ Hạng (Server)</h3>
-                <div className="text-5xl font-black">{myRank > 0 ? `#${myRank}` : '-'}</div>
+              <div className="bg-white border border-gray-200 rounded-3xl p-6 text-gray-900 shadow-sm relative overflow-hidden group hover:shadow-md hover:-translate-y-1 transition-all">
+                <Trophy className="absolute top-4 right-4 text-gray-100 group-hover:text-gray-200 transition-colors" size={80} />
+                <h3 className="font-bold text-gray-500 mb-1 relative z-10">Thứ Hạng (Server)</h3>
+                <div className="text-5xl font-black relative z-10">{myRank > 0 ? `#${myRank}` : '-'}</div>
               </div>
             </div>
 
+            {/* Biểu đồ & BXH */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Biểu đồ học tập */}
               <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">
                 <div className="flex items-center gap-2 mb-6">
-                  <TrendingUp className="text-blue-500" />
+                  <TrendingUp className="text-black" />
                   <h3 className="text-xl font-black text-gray-800">Biểu đồ Tiến độ</h3>
                 </div>
                 {chartData.length === 0 ? (
@@ -396,7 +398,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                       return (
                         <div key={i} className="flex-1 flex flex-col items-center justify-end group min-w-[40px] h-full">
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity text-xs font-black mb-2 text-black bg-gray-100 px-2 py-1 rounded-md">{displayScore}</div>
-                          <div className="w-full max-w-[40px] bg-gradient-to-t from-gray-900 to-gray-700 rounded-t-xl transition-all duration-500 shadow-md group-hover:from-blue-600 group-hover:to-blue-400 relative overflow-hidden" style={{ height: `${heightPercent}%` }}>
+                          <div className="w-full max-w-[40px] bg-gradient-to-t from-gray-900 to-gray-700 rounded-t-xl transition-all duration-500 shadow-md group-hover:from-black group-hover:to-gray-800 relative overflow-hidden" style={{ height: `${heightPercent}%` }}>
                              <div className="absolute top-0 left-0 w-full h-2 bg-white/20"></div>
                           </div>
                           <div className="text-[10px] mt-3 text-gray-400 font-bold truncate w-full text-center group-hover:text-black transition-colors" title={examInfo?.title}>{examInfo?.title || 'Bài thi'}</div>
@@ -407,9 +409,10 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                 )}
               </div>
 
+              {/* Bảng Vàng (Leaderboard) */}
               <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm flex flex-col">
                 <div className="flex items-center gap-2 mb-6">
-                  <Award className="text-orange-500" />
+                  <Award className="text-black" />
                   <h3 className="text-xl font-black text-gray-800">Bảng Vàng </h3>
                 </div>
                 {topStudents.length === 0 ? (
@@ -418,23 +421,24 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                   <div className="space-y-4">
                     {topStudents.map((s, index) => (
                       <div key={s.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors border border-gray-100 relative overflow-hidden">
-                        {index === 0 && <div className="absolute top-0 left-0 w-1 h-full bg-yellow-400"></div>}
+                        {index === 0 && <div className="absolute top-0 left-0 w-1 h-full bg-black"></div>}
                         
                         <div className="flex items-center gap-4">
-                          <div className={`font-black text-xl w-6 text-center ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-400' : 'text-gray-300'}`}>
-                            {index === 0 ? <Star className="fill-yellow-500 inline" size={20}/> : index + 1}
+                          <div className={`font-black text-xl w-6 text-center ${index === 0 ? 'text-black' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-gray-400' : 'text-gray-300'}`}>
+                            {index === 0 ? <Star className="fill-black inline" size={20}/> : index + 1}
                           </div>
                           <div>
                             <div className="font-black text-gray-800 text-sm sm:text-base truncate max-w-[120px]">{s.name}</div>
                             <div className="text-xs text-gray-500 font-bold">{s.totalExams} bài</div>
                           </div>
                         </div>
-                        <div className="font-black text-lg text-green-600">{s.avg.toFixed(1)}</div>
+                        <div className="font-black text-lg text-black">{s.avg.toFixed(1)}</div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
+
             </div>
           </div>
         )}
@@ -447,50 +451,50 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
           <div className="space-y-6">
             {/* 1. Thẻ Sức Mạnh (Thống kê Tổng quan) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                <Users className="absolute top-4 right-4 opacity-20" size={80} />
-                <h3 className="font-bold text-indigo-200 mb-1">Tổng Số Học Sinh</h3>
-                <div className="text-5xl font-black">{uniqueStudentsCount}</div>
+              <div className="bg-white border border-gray-200 rounded-3xl p-6 text-gray-900 shadow-sm relative overflow-hidden group hover:shadow-md hover:-translate-y-1 transition-all">
+                <Users className="absolute top-4 right-4 text-gray-100 group-hover:text-gray-200 transition-colors" size={80} />
+                <h3 className="font-bold text-gray-500 mb-1 relative z-10">Tổng Số Học Sinh</h3>
+                <div className="text-5xl font-black relative z-10">{uniqueStudentsCount}</div>
               </div>
-              <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                <FileText className="absolute top-4 right-4 opacity-20" size={80} />
-                <h3 className="font-bold text-emerald-200 mb-1">Tổng Số Đề Đã Giao</h3>
-                <div className="text-5xl font-black">{teacherExamsCount}</div>
+              <div className="bg-white border border-gray-200 rounded-3xl p-6 text-gray-900 shadow-sm relative overflow-hidden group hover:shadow-md hover:-translate-y-1 transition-all">
+                <FileText className="absolute top-4 right-4 text-gray-100 group-hover:text-gray-200 transition-colors" size={80} />
+                <h3 className="font-bold text-gray-500 mb-1 relative z-10">Tổng Số Đề Đã Giao</h3>
+                <div className="text-5xl font-black relative z-10">{teacherExamsCount}</div>
               </div>
-              <div className="bg-gradient-to-br from-cyan-500 to-cyan-700 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                <CheckCircle className="absolute top-4 right-4 opacity-20" size={80} />
-                <h3 className="font-bold text-cyan-200 mb-1">Tổng Lượt Nộp Bài</h3>
-                <div className="text-5xl font-black">{teacherResults.length}</div>
+              <div className="bg-white border border-gray-200 rounded-3xl p-6 text-gray-900 shadow-sm relative overflow-hidden group hover:shadow-md hover:-translate-y-1 transition-all">
+                <CheckCircle className="absolute top-4 right-4 text-gray-100 group-hover:text-gray-200 transition-colors" size={80} />
+                <h3 className="font-bold text-gray-500 mb-1 relative z-10">Tổng Lượt Nộp Bài</h3>
+                <div className="text-5xl font-black relative z-10">{teacherResults.length}</div>
               </div>
             </div>
 
             {/* 2. Radar Quét Kẻ Địch (Cảnh Báo Gian Lận) */}
-            <div className="bg-white p-8 rounded-3xl border border-red-100 shadow-sm flex flex-col relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-500"></div>
+            <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm flex flex-col relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-black"></div>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="text-red-500" />
-                    <h3 className="text-xl font-black text-gray-800">Radar Cảnh Báo Gian Lận</h3>
-                    {cheatIncidents.length > 0 && <span className="ml-2 bg-red-100 text-red-600 text-xs font-black px-2.5 py-1 rounded-full animate-pulse tracking-wide uppercase">Có phát hiện mới</span>}
+                    <AlertTriangle className="text-black" />
+                    <h3 className="text-xl font-black text-gray-800">Cảnh Báo Gian Lận</h3>
+                    {cheatIncidents.length > 0 && <span className="ml-2 bg-gray-100 text-black border border-gray-200 text-xs font-black px-2.5 py-1 rounded-full animate-pulse tracking-wide uppercase">Có phát hiện mới</span>}
                   </div>
                 </div>
                 
                 {cheatIncidents.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-gray-400 py-6 border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50">
-                    <CheckCircle size={40} className="mb-2 text-green-300" />
-                    <p className="font-bold">Tốt quá! Không phát hiện học sinh nào có dấu hiệu gian lận.</p>
+                  <div className="flex-1 flex flex-col items-center justify-center text-gray-400 py-6 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50">
+                    <CheckCircle size={40} className="mb-2 text-gray-300" />
+                    <p className="font-bold">Không phát hiện học sinh nào có dấu hiệu gian lận.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {cheatIncidents.map((incident, i) => (
-                      <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-red-50/50 rounded-2xl border border-red-100 hover:bg-red-50 transition-colors gap-4">
+                      <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all gap-4">
                         <div className="flex items-start sm:items-center gap-4">
-                            <div className="w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center shrink-0 shadow-inner">
+                            <div className="w-12 h-12 bg-gray-50 text-black border border-gray-200 rounded-full flex items-center justify-center shrink-0 shadow-sm">
                                 <AlertTriangle size={24} />
                             </div>
                             <div>
                                 <div className="font-bold text-gray-800 text-base">
-                                    Học sinh <span className="text-black font-black bg-white px-2 py-0.5 rounded shadow-sm border border-gray-200 mx-1">{incident.studentName}</span> vừa thoát màn hình
+                                    Học sinh <span className="text-black font-black bg-gray-100 px-2 py-0.5 rounded shadow-sm border border-gray-200 mx-1">{incident.studentName}</span> vừa thoát màn hình
                                 </div>
                                 <div className="text-sm text-gray-500 font-medium mt-1.5 flex items-center gap-1.5 flex-wrap">
                                     <span>Lớp: <span className="font-black text-gray-700">{incident.className}</span></span>
@@ -499,7 +503,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-red-500 text-white font-black text-lg px-4 py-2 rounded-xl shadow-sm whitespace-nowrap self-end sm:self-auto shrink-0">
+                        <div className="bg-white text-red-500 border border-red-200 font-black text-lg px-4 py-2 rounded-xl shadow-sm whitespace-nowrap self-end sm:self-auto shrink-0">
                            {incident.cheat_count} lần
                         </div>
                       </div>
