@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-// Sử dụng CDN import để tương thích hoàn hảo với cả môi trường Web Preview và Vite Local
-import { createClient } from 'https://esm.sh/@supabase/supabase-js';
+// Sử dụng thư viện từ ESM để tương thích tuyệt đối với cả môi trường Web và Node/Vite
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
   CheckCircle, XCircle, PlayCircle, AlertTriangle, 
@@ -360,7 +360,8 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                       const examInfo = exams.find(e => e.id === r.exam_id);
                       const displayScore = ((r.score / r.total) * 10).toFixed(1);
                       return (
-                        <div key={i} className="flex-1 flex flex-col items-center justify-end group min-w-[40px]">
+                        /* ĐÃ BỔ SUNG h-full CHO KHUNG CHỨA CỘT ĐỂ KHÔNG BỊ TÀNG HÌNH */
+                        <div key={i} className="flex-1 flex flex-col items-center justify-end group min-w-[40px] h-full">
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity text-xs font-black mb-2 text-black bg-gray-100 px-2 py-1 rounded-md">{displayScore}</div>
                           <div className="w-full max-w-[40px] bg-gradient-to-t from-gray-900 to-gray-700 rounded-t-xl transition-all duration-500 shadow-md group-hover:from-blue-600 group-hover:to-blue-400 relative overflow-hidden" style={{ height: `${heightPercent}%` }}>
                              <div className="absolute top-0 left-0 w-full h-2 bg-white/20"></div>
@@ -765,7 +766,7 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase, showToast }) {
       deadline: deadline || null,
       is_hidden: false,
       exam_type: examType,
-      duration: examType === 'exam' && duration ? parseInt(duration) : null // Chỉ lưu số phút nếu là Thi thật
+      duration: examType === 'exam' && duration ? parseInt(duration) : null 
     };
     
     await supabase.from('edu_exams').insert([newExam]);
