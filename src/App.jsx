@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+// Sử dụng CDN import để tương thích hoàn hảo với cả môi trường Web Preview và Vite Local
+import { createClient } from 'https://esm.sh/@supabase/supabase-js';
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
   CheckCircle, XCircle, PlayCircle, AlertTriangle, 
   ChevronRight, ArrowLeft, Eye, Layout, Trash2, Save, 
-  Link as LinkIcon, Download, Clock, Calendar, ShieldAlert, UserMinus, Info, Flag
+  Link as LinkIcon, Download, Clock, Calendar, ShieldAlert, 
+  UserMinus, Info, Flag, BarChart3, Trophy, TrendingUp, Medal, Star, Award
 } from 'lucide-react';
 
 // ==========================================
-// KẾT NỐI SUPABASE CHÍNH THỨC 
+// KẾT NỐI SUPABASE CHÍNH THỨC CỦA BẠN
 // ==========================================
 const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
@@ -32,7 +34,7 @@ export default function App() {
   const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', role: 'student', remember: true });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Hệ thống thông báo và hộp thoại xác nhận mượt mà
+  // --- HỆ THỐNG THÔNG BÁO MƯỢT MÀ ---
   const [toast, setToast] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
 
@@ -51,7 +53,7 @@ export default function App() {
     });
   };
 
-  // Kiểm tra đăng nhập
+  // 1. KIỂM TRA ĐĂNG NHẬP
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -73,11 +75,11 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // 2. LẤY HỒ SƠ & TẢI DỮ LIỆU
   const fetchUserProfile = async (userId) => {
     const { data } = await supabase.from('edu_users').select('*').eq('id', userId).single();
     if (data) {
       setCurrentUser(data);
-      // Giữ nguyên view nếu đang ở trang con, chỉ chuyển nếu đang ở trang login
       setCurrentView(prevView => prevView === 'login' ? 'dashboard' : prevView);
       fetchData(); 
     }
@@ -92,6 +94,7 @@ export default function App() {
     supabase.from('edu_users').select('*').then(({data}) => data && setAllUsers(data));
   };
 
+  // 3. XỬ LÝ ĐĂNG NHẬP / ĐĂNG KÝ
   const handleAuth = async () => {
     if (!authForm.email || !authForm.password) return showToast('Vui lòng điền đủ Email và Mật khẩu!', 'error');
     setIsLoading(true);
@@ -169,7 +172,7 @@ export default function App() {
       </header>
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8 relative">
-        {currentView === 'dashboard' && <Dashboard currentUser={currentUser} classes={classes} setClasses={setClasses} enrollments={enrollments} setEnrollments={setEnrollments} navigate={navigate} supabase={supabase} showToast={showToast} showConfirm={showConfirm} />}
+        {currentView === 'dashboard' && <Dashboard currentUser={currentUser} classes={classes} setClasses={setClasses} enrollments={enrollments} setEnrollments={setEnrollments} navigate={navigate} supabase={supabase} showToast={showToast} showConfirm={showConfirm} results={results} exams={exams} allUsers={allUsers} />}
         {currentView === 'class' && <ClassDetail currentUser={currentUser} cls={selectedClass} exams={exams.filter(e => e.classId === selectedClass.id)} enrollments={enrollments} setEnrollments={setEnrollments} allUsers={allUsers} results={results} navigate={navigate} setExams={setExams} supabase={supabase} showToast={showToast} showConfirm={showConfirm} />}
         {currentView === 'create_exam' && <ExamCreator cls={selectedClass} navigate={navigate} setExams={setExams} exams={exams} supabase={supabase} showToast={showToast} />}
         {currentView === 'exam_taker' && <ExamTaker exam={selectedExam} navigate={navigate} currentUser={currentUser} resultsState={results} setResultsState={setResults} supabase={supabase} showToast={showToast} />}
@@ -221,11 +224,34 @@ function ConfirmModal({ confirmDialog, setConfirmDialog }) {
   );
 }
 
-function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollments, navigate, supabase, showToast, showConfirm }) {
+function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollments, navigate, supabase, showToast, showConfirm, results, exams, allUsers }) {
   const [joinCode, setJoinCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [showCreateClass, setShowCreateClass] = useState(false);
   const [newClassName, setNewClassName] = useState('');
+
+  // TÍNH TOÁN DỮ LIỆU THỐNG KÊ (DÀNH CHO HỌC SINH)
+  const myResults = results?.filter(r => r.student_id === currentUser.id) || [];
+  const totalExamsTaken = myResults.length;
+  // Tính điểm trung bình (Thang điểm 10)
+  const avgScore = totalExamsTaken > 0 
+    ? (myResults.reduce((acc, curr) => acc + (curr.score / curr.total) * 10, 0) / totalExamsTaken).toFixed(1)
+    : 0;
+
+  // Tính toán Bảng xếp hạng (Leaderboard) - Tổng hợp điểm các học sinh
+  const studentStats = allUsers?.filter(u => u.role === 'student').map(student => {
+    const stuResults = results?.filter(r => r.student_id === student.id) || [];
+    const avg = stuResults.length > 0
+        ? stuResults.reduce((acc, curr) => acc + (curr.score / curr.total) * 10, 0) / stuResults.length
+        : 0;
+    return { ...student, avg, totalExams: stuResults.length };
+  }).filter(s => s.totalExams > 0).sort((a, b) => b.avg - a.avg) || [];
+
+  const myRank = studentStats.findIndex(s => s.id === currentUser.id) + 1;
+  const topStudents = studentStats.slice(0, 5); // Lấy Top 5
+  
+  // Dữ liệu biểu đồ (Lấy 10 bài gần nhất)
+  const chartData = myResults.slice(-10);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -292,9 +318,99 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
         </div>
       )}
 
-      <div className="space-y-6 page-transition">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h2 className="text-3xl font-black tracking-tight">Bảng tin Lớp học</h2>
+      <div className="space-y-8 page-transition">
+        
+        {/* TÍNH NĂNG MỚI: BẢNG TỔNG KẾT VÀ THỐNG KÊ (CHỈ DÀNH CHO HỌC SINH) */}
+        {currentUser.role === 'student' && (
+          <div className="space-y-6">
+            {/* 3 Thẻ Chỉ số */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                <BarChart3 className="absolute top-4 right-4 opacity-20" size={80} />
+                <h3 className="font-bold text-blue-200 mb-1">Điểm Trung Bình</h3>
+                <div className="text-5xl font-black">{avgScore} <span className="text-2xl text-blue-300">/10</span></div>
+              </div>
+              <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                <CheckCircle className="absolute top-4 right-4 opacity-20" size={80} />
+                <h3 className="font-bold text-purple-200 mb-1">Tổng Số Bài Đã Làm</h3>
+                <div className="text-5xl font-black">{totalExamsTaken}</div>
+              </div>
+              <div className="bg-gradient-to-br from-orange-500 to-orange-700 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                <Trophy className="absolute top-4 right-4 opacity-20" size={80} />
+                <h3 className="font-bold text-orange-200 mb-1">Thứ Hạng (Server)</h3>
+                <div className="text-5xl font-black">{myRank > 0 ? `#${myRank}` : '-'}</div>
+              </div>
+            </div>
+
+            {/* Biểu đồ & BXH */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Biểu đồ học tập */}
+              <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-2 mb-6">
+                  <TrendingUp className="text-blue-500" />
+                  <h3 className="text-xl font-black text-gray-800">Biểu đồ Tiến độ</h3>
+                </div>
+                {chartData.length === 0 ? (
+                  <div className="h-48 flex items-center justify-center text-gray-400 font-bold bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">Bạn chưa làm bài nào. Khởi động ngay thôi!</div>
+                ) : (
+                  <div className="flex items-end gap-3 sm:gap-6 h-56 mt-4 border-b-2 border-gray-100 pb-2 overflow-x-auto pt-8">
+                    {chartData.map((r, i) => {
+                      const heightPercent = (r.score / r.total) * 100;
+                      const examInfo = exams.find(e => e.id === r.exam_id);
+                      const displayScore = ((r.score / r.total) * 10).toFixed(1);
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center justify-end group min-w-[40px]">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity text-xs font-black mb-2 text-black bg-gray-100 px-2 py-1 rounded-md">{displayScore}</div>
+                          <div className="w-full max-w-[40px] bg-gradient-to-t from-gray-900 to-gray-700 rounded-t-xl transition-all duration-500 shadow-md group-hover:from-blue-600 group-hover:to-blue-400 relative overflow-hidden" style={{ height: `${heightPercent}%` }}>
+                             <div className="absolute top-0 left-0 w-full h-2 bg-white/20"></div>
+                          </div>
+                          <div className="text-[10px] mt-3 text-gray-400 font-bold truncate w-full text-center group-hover:text-black transition-colors" title={examInfo?.title}>{examInfo?.title || 'Bài thi'}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Bảng Vàng (Leaderboard) */}
+              <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm flex flex-col">
+                <div className="flex items-center gap-2 mb-6">
+                  <Award className="text-orange-500" />
+                  <h3 className="text-xl font-black text-gray-800">Bảng Vàng </h3>
+                </div>
+                {topStudents.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center text-gray-400 font-bold">Chưa có ai ghi danh...</div>
+                ) : (
+                  <div className="space-y-4">
+                    {topStudents.map((s, index) => (
+                      <div key={s.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors border border-gray-100 relative overflow-hidden">
+                        {index === 0 && <div className="absolute top-0 left-0 w-1 h-full bg-yellow-400"></div>}
+                        
+                        <div className="flex items-center gap-4">
+                          <div className={`font-black text-xl w-6 text-center ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-400' : 'text-gray-300'}`}>
+                            {index === 0 ? <Star className="fill-yellow-500 inline" size={20}/> : index + 1}
+                          </div>
+                          <div>
+                            <div className="font-black text-gray-800 text-sm sm:text-base truncate max-w-[120px]">{s.name}</div>
+                            <div className="text-xs text-gray-500 font-bold">{s.totalExams} bài</div>
+                          </div>
+                        </div>
+                        <div className="font-black text-lg text-green-600">{s.avg.toFixed(1)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-t border-gray-200 pt-8">
+          <h2 className="text-3xl font-black tracking-tight flex items-center gap-2">
+            <BookOpen size={28}/> Lớp học của tôi
+          </h2>
           {currentUser.role === 'teacher' ? (
             <button onClick={() => setShowCreateClass(true)} className="bg-black text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold hover:bg-gray-800 hover:-translate-y-1 transition-all shadow-md hover:shadow-lg">
               <Plus size={18} /> Tạo lớp mới
@@ -312,7 +428,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                   <button onClick={() => setIsJoining(false)} className="px-5 py-2 rounded-xl bg-gray-100 font-bold hover:bg-gray-200 transition-colors">Hủy</button>
                 </div>
               ) : (
-                <button onClick={() => setIsJoining(true)} className="bg-black text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold hover:bg-gray-800 hover:-translate-y-1 transition-all shadow-md hover:shadow-lg">
+                <button onClick={() => setIsJoining(true)} className="bg-white border-2 border-black text-black px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold hover:bg-gray-50 hover:-translate-y-1 transition-all shadow-sm">
                   <Plus size={18} /> Tham gia bằng mã
                 </button>
               )}
@@ -321,7 +437,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
         </div>
 
         {myClasses.length === 0 ? (
-          <div className="text-center py-24 bg-white rounded-3xl border border-gray-200 shadow-sm animate-pop">
+          <div className="text-center py-16 bg-white rounded-3xl border border-gray-200 shadow-sm animate-pop">
             <BookOpen className="mx-auto text-gray-200 mb-4" size={64} />
             <p className="text-gray-500 font-bold text-lg mb-2">Bạn chưa có lớp học nào.</p>
             {currentUser.role === 'student' && <p className="text-gray-400 text-sm">Hãy xin mã lớp từ giáo viên hoặc bấm vào link chia sẻ để tham gia nhé!</p>}
@@ -339,14 +455,14 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                   </button>
                 )}
 
-                <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-5 border border-blue-100 group-hover:scale-110 transition-transform duration-300">
+                <div className="w-14 h-14 bg-gray-900 text-white rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-md">
                   <BookOpen size={28} />
                 </div>
                 <h3 className="text-xl font-black mb-2 truncate text-gray-800 pr-8">{cls.name}</h3>
                 {currentUser.role === 'teacher' && (
                   <p className="text-gray-500 text-sm mb-5 font-medium">Mã chia sẻ: <span className="font-mono font-bold bg-gray-100 text-black px-2 py-1 rounded-md">{cls.code}</span></p>
                 )}
-                <div className="flex items-center text-sm text-gray-400 font-bold group-hover:text-black transition-colors mt-4">
+                <div className="flex items-center text-sm text-gray-400 font-bold group-hover:text-blue-600 transition-colors mt-4">
                   Vào lớp <ChevronRight size={18} className="ml-1 group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
@@ -748,7 +864,6 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
   const [flagged, setFlagged] = useState({}); 
   const isExamMode = exam.exam_type === 'exam'; 
 
-  // Đồng hồ đếm ngược kiên cố
   const [timeLeft, setTimeLeft] = useState(() => {
     if (isExamMode && exam.duration && currentUser?.role === 'student') {
       const storageKey = `endTime_${exam.id}_${currentUser.id}`;
