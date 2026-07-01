@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
+
+// Bật kết nối thật tới Supabase
 import { createClient } from '@supabase/supabase-js';
 
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
   CheckCircle, XCircle, PlayCircle, AlertTriangle, 
   ChevronRight, ArrowLeft, Eye, Layout, Trash2, Save, 
-  Link as LinkIcon, Download, Clock, Calendar, ShieldAlert, UserMinus
+  Link as LinkIcon, Download, Clock, Calendar, ShieldAlert, UserMinus, Info
 } from 'lucide-react';
 
 // ==========================================
-// ⚠️ BƯỚC CUỐI CÙNG: DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO ĐÂY
+// ⚠️ DÁN URL VÀ KEY SUPABASE CỦA BẠN VÀO ĐÂY
 // ==========================================
 const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
@@ -23,7 +25,6 @@ export default function App() {
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedExam, setSelectedExam] = useState(null);
   
-  // Dữ liệu toàn cục
   const [classes, setClasses] = useState([]);
   const [exams, setExams] = useState([]);
   const [enrollments, setEnrollments] = useState([]); 
@@ -31,8 +32,27 @@ export default function App() {
   const [allUsers, setAllUsers] = useState([]); 
   
   const [authMode, setAuthMode] = useState('login');
-  const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', role: 'student' });
-  const [isLoading, setIsLoading] = useState(true);
+  const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', role: 'student', remember: true });
+  const [isLoading, setIsLoading] = useState(true); // Đặt mặc định true chờ tải
+
+  // --- HỆ THỐNG THÔNG BÁO MƯỢT MÀ (TOAST & CONFIRM) ---
+  const [toast, setToast] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const showConfirm = (message, onConfirm) => {
+    setConfirmDialog({ 
+      message, 
+      onConfirm: async () => { 
+        await onConfirm(); 
+        setConfirmDialog(null); 
+      } 
+    });
+  };
 
   // 1. KIỂM TRA ĐĂNG NHẬP
   useEffect(() => {
@@ -58,10 +78,10 @@ export default function App() {
 
   // 2. LẤY HỒ SƠ & TẢI DỮ LIỆU
   const fetchUserProfile = async (userId) => {
-    // Tải dữ liệu ngầm, không hiện xoay Loading để tránh giật màn hình khi chuyển tab
     const { data } = await supabase.from('edu_users').select('*').eq('id', userId).single();
     if (data) {
       setCurrentUser(data);
+      // GIỮ NGUYÊN VỊ TRÍ KHI CHUYỂN TAB:
       setCurrentView(prevView => prevView === 'login' ? 'dashboard' : prevView);
       fetchData(); 
     }
@@ -78,12 +98,13 @@ export default function App() {
 
   // 3. XỬ LÝ ĐĂNG NHẬP / ĐĂNG KÝ
   const handleAuth = async () => {
-    if (!authForm.email || !authForm.password) return alert('Vui lòng điền đủ Email và Mật khẩu!');
+    if (!authForm.email || !authForm.password) return showToast('Vui lòng điền đủ Email và Mật khẩu!', 'error');
     setIsLoading(true);
     try {
       if (authMode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email: authForm.email, password: authForm.password });
         if (error) throw error; 
+        showToast('Đăng nhập thành công!', 'success');
       } else {
         if (!authForm.name) throw new Error('Vui lòng nhập họ và tên!');
         if (authForm.password.length < 6) throw new Error('Mật khẩu phải có ít nhất 6 ký tự!');
@@ -97,11 +118,11 @@ export default function App() {
           }]);
           if (dbError) throw dbError;
         }
-        alert('Đăng ký thành công! Hãy đăng nhập nhé.');
+        showToast('Đăng ký thành công! Hãy đăng nhập nhé.', 'success');
         setAuthMode('login'); 
       }
     } catch (error) {
-      alert(error.message || 'Có lỗi xảy ra!');
+      showToast(error.message || 'Có lỗi xảy ra!', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -114,6 +135,7 @@ export default function App() {
     setCurrentUser(null);
     setCurrentView('login');
     setIsLoading(false);
+    showToast('Đã đăng xuất an toàn.', 'info');
   };
 
   const navigate = (view, data = {}) => {
@@ -123,10 +145,19 @@ export default function App() {
   };
 
   if (isLoading) return <LoadingScreen />;
-  if (!session || !currentUser) return <AuthScreen authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} handleAuth={handleAuth} />;
+  if (!session || !currentUser) return (
+    <>
+      <Toast toast={toast} />
+      <AuthScreen authMode={authMode} setAuthMode={setAuthMode} authForm={authForm} setAuthForm={setAuthForm} handleAuth={handleAuth} />
+    </>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col">
+      {/* THÔNG BÁO VÀ HỘP THOẠI TOÀN CỤC */}
+      <Toast toast={toast} />
+      <ConfirmModal confirmDialog={confirmDialog} setConfirmDialog={setConfirmDialog} />
+
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40 shrink-0 shadow-sm no-print animate-fade-in-down">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 font-black text-xl cursor-pointer tracking-tight hover:scale-105 transition-transform" onClick={() => navigate('dashboard')}>
@@ -136,7 +167,7 @@ export default function App() {
             <span className="text-sm font-black text-gray-600 bg-gray-100 px-4 py-2 rounded-xl hidden sm:inline-block border border-gray-200">
               {currentUser.name} ({currentUser.role === 'teacher' ? 'Giáo viên' : 'Học sinh'})
             </span>
-            <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-xl hover:bg-red-50 border border-transparent hover:border-red-100" title="Đăng xuất">
+            <button onClick={() => showConfirm('Bạn có chắc chắn muốn đăng xuất?', handleLogout)} className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-xl hover:bg-red-50 border border-transparent hover:border-red-100" title="Đăng xuất">
               <LogOut size={20} />
             </button>
           </div>
@@ -144,21 +175,24 @@ export default function App() {
       </header>
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8 relative">
-        {currentView === 'dashboard' && <Dashboard currentUser={currentUser} classes={classes} setClasses={setClasses} enrollments={enrollments} setEnrollments={setEnrollments} navigate={navigate} supabase={supabase} />}
-        {currentView === 'class' && <ClassDetail currentUser={currentUser} cls={selectedClass} exams={exams.filter(e => e.classId === selectedClass.id)} enrollments={enrollments} setEnrollments={setEnrollments} allUsers={allUsers} results={results} navigate={navigate} setExams={setExams} supabase={supabase} />}
-        {currentView === 'create_exam' && <ExamCreator cls={selectedClass} navigate={navigate} setExams={setExams} exams={exams} supabase={supabase} />}
-        {currentView === 'exam_taker' && <ExamTaker exam={selectedExam} navigate={navigate} currentUser={currentUser} resultsState={results} setResultsState={setResults} supabase={supabase} />}
+        {currentView === 'dashboard' && <Dashboard currentUser={currentUser} classes={classes} setClasses={setClasses} enrollments={enrollments} setEnrollments={setEnrollments} navigate={navigate} supabase={supabase} showToast={showToast} showConfirm={showConfirm} />}
+        {currentView === 'class' && <ClassDetail currentUser={currentUser} cls={selectedClass} exams={exams.filter(e => e.classId === selectedClass.id)} enrollments={enrollments} setEnrollments={setEnrollments} allUsers={allUsers} results={results} navigate={navigate} setExams={setExams} supabase={supabase} showToast={showToast} showConfirm={showConfirm} />}
+        {currentView === 'create_exam' && <ExamCreator cls={selectedClass} navigate={navigate} setExams={setExams} exams={exams} supabase={supabase} showToast={showToast} />}
+        {currentView === 'exam_taker' && <ExamTaker exam={selectedExam} navigate={navigate} currentUser={currentUser} resultsState={results} setResultsState={setResults} supabase={supabase} showToast={showToast} />}
         {currentView === 'exam_result' && <ExamResult exam={selectedExam} results={selectedExam.results} navigate={navigate} currentUser={currentUser} />}
       </main>
 
-      {/* CSS Hiệu ứng */}
       <style>{`
         @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes popIn { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
+        
         .page-transition { animation: fadeSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .animate-fade-in-down { animation: fadeInDown 0.4s ease-out forwards; }
         .animate-pop { animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-toast { animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
         @media print { body * { visibility: hidden; } .print-section, .print-section * { visibility: visible; } .print-section { position: absolute; left: 0; top: 0; width: 100%; padding: 0; } .no-print { display: none !important; } }
         html { scroll-behavior: smooth; }
       `}</style>
@@ -166,9 +200,37 @@ export default function App() {
   );
 }
 
+// ================= COMPONENT TIỆN ÍCH (THÔNG BÁO VÀ HỘP THOẠI) =================
+function Toast({ toast }) {
+  if (!toast) return null;
+  const bgColors = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-blue-600' };
+  return (
+    <div className={`fixed bottom-6 right-6 ${bgColors[toast.type]} text-white px-6 py-4 rounded-2xl shadow-2xl z-[200] animate-toast font-bold flex items-center gap-3 border border-white/20`}>
+      {toast.type === 'success' ? <CheckCircle size={20} /> : toast.type === 'error' ? <AlertTriangle size={20} /> : <Info size={20} />}
+      {toast.message}
+    </div>
+  );
+}
+
+function ConfirmModal({ confirmDialog, setConfirmDialog }) {
+  if (!confirmDialog) return null;
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] p-4 backdrop-blur-sm transition-opacity">
+      <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl animate-pop text-center">
+        <AlertTriangle size={56} className="text-red-500 mx-auto mb-4" />
+        <h3 className="text-xl font-black mb-6 text-gray-800 leading-tight">{confirmDialog.message}</h3>
+        <div className="flex gap-3 justify-center">
+          <button onClick={() => setConfirmDialog(null)} className="px-6 py-3 rounded-xl bg-gray-100 font-bold hover:bg-gray-200 transition-colors flex-1">Hủy</button>
+          <button onClick={confirmDialog.onConfirm} className="px-6 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors flex-1 shadow-md">Đồng ý</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ================= CÁC COMPONENT GIAO DIỆN CON =================
 
-function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollments, navigate, supabase }) {
+function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollments, navigate, supabase, showToast, showConfirm }) {
   const [joinCode, setJoinCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [showCreateClass, setShowCreateClass] = useState(false);
@@ -188,33 +250,36 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
     : classes.filter(c => enrollments.some(e => e.class_id === c.id && e.student_id === currentUser.id));
 
   const handleCreateClass = async () => {
-    if (!newClassName.trim()) return alert('Vui lòng nhập tên lớp!');
+    if (!newClassName.trim()) return showToast('Vui lòng nhập tên lớp!', 'error');
     const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     const newClass = { id: 'c_' + Date.now(), name: newClassName, code: newCode, teacherId: currentUser.id };
     await supabase.from('edu_classes').insert([newClass]);
     setClasses([...classes, newClass]);
     setShowCreateClass(false);
     setNewClassName('');
+    showToast('Đã tạo lớp học thành công!');
   };
 
   const handleJoinClass = async (codeToJoin = joinCode) => {
     const found = classes.find(c => c.code === codeToJoin);
-    if (!found) return alert('Mã lớp không chính xác!');
+    if (!found) return showToast('Mã lớp không chính xác!', 'error');
     const alreadyJoined = enrollments.some(e => e.class_id === found.id && e.student_id === currentUser.id);
     if (alreadyJoined) { navigate('class', { cls: found }); return; }
 
     const newEnroll = { id: 'en_' + Date.now(), class_id: found.id, student_id: currentUser.id };
     await supabase.from('edu_enrollments').insert([newEnroll]);
     setEnrollments([...enrollments, newEnroll]);
+    showToast(`Chào mừng bạn đến với lớp ${found.name}!`);
     navigate('class', { cls: found });
   };
 
-  const handleDeleteClass = async (e, classObj) => {
+  const handleDeleteClass = (e, classObj) => {
     e.stopPropagation(); 
-    if(!window.confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn lớp "${classObj.name}" không?\nMọi dữ liệu liên quan sẽ bị ẩn đi.`)) return;
-    await supabase.from('edu_classes').delete().eq('id', classObj.id);
-    setClasses(prev => prev.filter(c => c.id !== classObj.id));
-    alert('Đã xóa lớp thành công!');
+    showConfirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn lớp "${classObj.name}" không?\nMọi dữ liệu liên quan sẽ bị ẩn đi.`, async () => {
+      await supabase.from('edu_classes').delete().eq('id', classObj.id);
+      setClasses(prev => prev.filter(c => c.id !== classObj.id));
+      showToast('Đã xóa lớp thành công!');
+    });
   };
 
   return (
@@ -302,7 +367,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
   );
 }
 
-function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, allUsers, results, navigate, setExams, supabase }) {
+function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, allUsers, results, navigate, setExams, supabase, showToast, showConfirm }) {
   const [activeTab, setActiveTab] = useState('exams'); 
   const [extendingExam, setExtendingExam] = useState(null); 
   const [newDeadline, setNewDeadline] = useState(''); 
@@ -311,18 +376,23 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
   const classStudents = enrollments.filter(e => e.class_id === cls.id).map(e => allUsers.find(u => u.id === e.student_id)).filter(Boolean); 
   const visibleExams = exams.filter(e => !e.is_hidden);
 
-  const copyLink = () => { navigator.clipboard.writeText(joinLink); alert('Đã copy link mời tham gia lớp!'); };
+  const copyLink = () => { 
+    navigator.clipboard.writeText(joinLink); 
+    showToast('Đã chép link mời tham gia lớp!'); 
+  };
+  
   const exportPDF = () => { window.print(); };
 
-  const handleDeleteExam = async (exam) => {
-    if(!window.confirm(`Bạn có chắc muốn xóa đề "${exam.title}" không? \nTệp PDF sẽ bị xóa vĩnh viễn để giải phóng dung lượng máy chủ.\n(Điểm của học sinh vẫn sẽ được giữ lại trong Bảng điểm).`)) return;
-    if (exam.fileUrl && exam.fileUrl !== 'fake-url') {
-      const fileName = exam.fileUrl.split('/').pop();
-      await supabase.storage.from('exams').remove([fileName]);
-    }
-    await supabase.from('edu_exams').update({ fileUrl: null, is_hidden: true }).eq('id', exam.id);
-    setExams(prev => prev.map(e => e.id === exam.id ? { ...e, fileUrl: null, is_hidden: true } : e));
-    alert('Đã dọn dẹp file và xóa bài tập thành công!');
+  const handleDeleteExam = (exam) => {
+    showConfirm(`Bạn có chắc muốn xóa đề "${exam.title}" không? \nTệp PDF sẽ bị xóa vĩnh viễn để giải phóng dung lượng.`, async () => {
+      if (exam.fileUrl && exam.fileUrl !== 'fake-url') {
+        const fileName = exam.fileUrl.split('/').pop();
+        await supabase.storage.from('exams').remove([fileName]);
+      }
+      await supabase.from('edu_exams').update({ fileUrl: null, is_hidden: true }).eq('id', exam.id);
+      setExams(prev => prev.map(e => e.id === exam.id ? { ...e, fileUrl: null, is_hidden: true } : e));
+      showToast('Đã dọn dẹp file và xóa bài tập thành công!');
+    });
   };
 
   const handleSaveDeadline = async () => {
@@ -330,13 +400,15 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
     setExams(prev => prev.map(e => e.id === extendingExam.id ? { ...e, deadline: newDeadline } : e));
     setExtendingExam(null);
     setNewDeadline('');
+    showToast('Đã gia hạn thời gian thành công!');
   };
 
-  const handleRemoveStudent = async (student) => {
-    if(!window.confirm(`Bạn có chắc muốn mời học sinh "${student.name}" ra khỏi lớp không?`)) return;
-    await supabase.from('edu_enrollments').delete().match({ class_id: cls.id, student_id: student.id });
-    setEnrollments(prev => prev.filter(e => !(e.class_id === cls.id && e.student_id === student.id)));
-    alert(`Đã mời học sinh ${student.name} ra khỏi lớp!`);
+  const handleRemoveStudent = (student) => {
+    showConfirm(`Bạn có chắc muốn mời học sinh "${student.name}" ra khỏi lớp không?`, async () => {
+      await supabase.from('edu_enrollments').delete().match({ class_id: cls.id, student_id: student.id });
+      setEnrollments(prev => prev.filter(e => !(e.class_id === cls.id && e.student_id === student.id)));
+      showToast(`Đã mời học sinh ${student.name} ra khỏi lớp!`);
+    });
   };
 
   return (
@@ -420,7 +492,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
                             <div className="flex items-center gap-2 mb-1">
                                <h3 className="font-black text-lg text-gray-800 group-hover:text-black transition-colors">{exam.title}</h3>
                                {isExamMode ? (
-                                 <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Thi thật</span>
+                                 <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Thi thật {exam.duration ? `(${exam.duration}p)` : ''}</span>
                                ) : (
                                  <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Luyện tập</span>
                                )}
@@ -512,7 +584,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
                                       {hsResult.score} / {hsResult.total}
                                     </span>
                                     {exam.exam_type === 'exam' && hsResult.cheat_count > 0 && (
-                                      <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm animate-pulse">
+                                      <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm animate-pulse" title={`Thoát màn hình ${hsResult.cheat_count} lần`}>
                                         <AlertTriangle size={10} /> Gian lận: {hsResult.cheat_count}
                                       </span>
                                     )}
@@ -542,13 +614,14 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
   );
 }
 
-function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
+function ExamCreator({ cls, navigate, setExams, exams, supabase, showToast }) {
   const [title, setTitle] = useState('');
   const [examType, setExamType] = useState('practice'); 
   const [fileUploaded, setFileUploaded] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null); 
   const [questions, setQuestions] = useState([]);
   const [deadline, setDeadline] = useState(''); 
+  const [duration, setDuration] = useState(''); // TÍNH NĂNG MỚI: Cài đặt số phút
   const [isSaving, setIsSaving] = useState(false);
 
   const addQuestion = (type) => {
@@ -561,9 +634,9 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
   };
 
   const handleSave = async () => {
-    if (!title.trim()) return alert('Vui lòng nhập tiêu đề bài kiểm tra!');
-    if (!fileUploaded || !selectedFile) return alert('Vui lòng đính kèm file đề bài (PDF)!');
-    if (questions.length === 0) return alert('Vui lòng thêm ít nhất 1 câu hỏi!');
+    if (!title.trim()) return showToast('Vui lòng nhập tiêu đề bài kiểm tra!', 'error');
+    if (!fileUploaded || !selectedFile) return showToast('Vui lòng đính kèm file đề bài (PDF)!', 'error');
+    if (questions.length === 0) return showToast('Vui lòng thêm ít nhất 1 câu hỏi!', 'error');
 
     setIsSaving(true);
     let finalFileUrl = '';
@@ -571,7 +644,7 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
     const fileName = `exam_${Date.now()}.${fileExt}`;
     
     const { error: uploadError } = await supabase.storage.from('exams').upload(fileName, selectedFile);
-    if (uploadError) { alert('Lỗi tải file: ' + uploadError.message); setIsSaving(false); return; }
+    if (uploadError) { showToast('Lỗi tải file: ' + uploadError.message, 'error'); setIsSaving(false); return; }
     
     const { data: urlData } = supabase.storage.from('exams').getPublicUrl(fileName);
     finalFileUrl = urlData.publicUrl;
@@ -584,11 +657,13 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
       questions,
       deadline: deadline || null,
       is_hidden: false,
-      exam_type: examType 
+      exam_type: examType,
+      duration: examType === 'exam' && duration ? parseInt(duration) : null // Chỉ lưu số phút nếu là Thi thật
     };
     
     await supabase.from('edu_exams').insert([newExam]);
     setExams([...exams, newExam]);
+    showToast('Đã phát hành bài thi thành công!');
     navigate('class', { cls });
     setIsSaving(false);
   };
@@ -616,17 +691,24 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
              <div className="flex gap-4 mt-2">
                <div onClick={() => setExamType('practice')} className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition-all ${examType === 'practice' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:bg-gray-50'}`}>
                  <div className="flex items-center gap-2 font-black text-green-700 mb-1"><BookOpen size={18}/> Luyện tập tự do</div>
-                 <p className="text-xs font-bold text-gray-500">Học sinh làm bài thoải mái, không bật giám sát gian lận.</p>
+                 <p className="text-xs font-bold text-gray-500">Học sinh làm bài thoải mái, không bật giám sát.</p>
                </div>
                <div onClick={() => setExamType('exam')} className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition-all ${examType === 'exam' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:bg-gray-50'}`}>
                  <div className="flex items-center gap-2 font-black text-purple-700 mb-1"><ShieldAlert size={18}/> Thi nghiêm ngặt</div>
-                 <p className="text-xs font-bold text-gray-500">Bật giám sát gian lận. Cảnh báo nếu thoát màn hình.</p>
+                 <p className="text-xs font-bold text-gray-500">Giám sát thoát màn hình và cho phép tính giờ.</p>
                </div>
              </div>
+             
+             {/* Hiện ô nhập số phút nếu chọn Thi thật */}
+             {examType === 'exam' && (
+               <div className="mt-4 animate-fade-in-down">
+                 <input type="number" placeholder="Thời gian làm bài (Phút) - Để trống nếu không tính giờ" className="w-full border-2 border-purple-200 p-4 rounded-xl font-bold outline-none focus:border-purple-500 transition-colors bg-purple-50 focus:bg-white text-purple-900 placeholder:text-purple-300" value={duration} onChange={e => setDuration(e.target.value)} min="1" />
+               </div>
+             )}
            </div>
 
            <div>
-             <label className="font-black text-sm uppercase text-gray-700">3. Hạn nộp bài (Tùy chọn)</label>
+             <label className="font-black text-sm uppercase text-gray-700">3. Hạn chót nộp bài (Tùy chọn)</label>
              <input type="datetime-local" className="w-full border-2 border-gray-200 p-4 rounded-xl mt-2 font-bold outline-none focus:border-black transition-colors bg-gray-50 focus:bg-white" value={deadline} onChange={e => setDeadline(e.target.value)} />
            </div>
            
@@ -669,13 +751,19 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase }) {
   );
 }
 
-function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState, supabase }) {
+function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState, supabase, showToast }) {
   const [answers, setAnswers] = useState({});
   const [cheatWarning, setCheatWarning] = useState(false);
   const [cheatCount, setCheatCount] = useState(0);
   const isExamMode = exam.exam_type === 'exam'; 
 
-  // Auto-save: Tải nháp khi mới vào
+  // ĐỒNG HỒ ĐẾM NGƯỢC
+  const [timeLeft, setTimeLeft] = useState(() => {
+    if (isExamMode && exam.duration) return exam.duration * 60; // Đổi phút ra giây
+    return null;
+  });
+
+  // Khôi phục nháp
   useEffect(() => {
     if (currentUser?.role === 'student') {
       const draft = localStorage.getItem(`draft_${exam.id}_${currentUser.id}`);
@@ -683,7 +771,21 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
     }
   }, []);
 
-  // Chống gian lận
+  // Xử lý đồng hồ đếm lùi
+  useEffect(() => {
+    if (timeLeft === null) return;
+    
+    if (timeLeft <= 0) {
+      showToast('Đã hết thời gian! Hệ thống tự động thu bài.', 'info');
+      submitExam(); // Bom nổ = Tự động nộp bài
+      return;
+    }
+    
+    const timerId = setInterval(() => setTimeLeft(t => t - 1), 1000);
+    return () => clearInterval(timerId);
+  }, [timeLeft]);
+
+  // Giám sát gian lận
   useEffect(() => {
     if (isExamMode) {
       const handleVis = () => { if (document.hidden) { setCheatWarning(true); setCheatCount(prev => prev + 1); } };
@@ -693,7 +795,6 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
     }
   }, [isExamMode]);
 
-  // Click chọn & Auto-save
   const handleSelect = (qId, val) => {
     const newAns = { ...answers, [qId]: val };
     setAnswers(newAns);
@@ -727,11 +828,17 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
       await supabase.from('edu_results').insert([newResult]);
       setResultsState([...resultsState, newResult]);
       
-      // Xóa nháp sau khi nộp thành công
       try { localStorage.removeItem(`draft_${exam.id}_${currentUser.id}`); } catch(e){}
     }
 
+    showToast('Nộp bài thành công!');
     navigate('exam_result', { exam: { ...exam, results } });
+  };
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
   };
 
   return (
@@ -768,11 +875,20 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
                {currentUser.role === 'teacher' ? (
                  <span className="text-xs font-bold text-orange-500 bg-orange-100 px-2 py-0.5 rounded-full mt-1 inline-block">Xem trước (Không lưu điểm)</span>
                ) : (
-                 isExamMode ? (
-                   <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded flex items-center gap-1 mt-1 w-max"><ShieldAlert size={12}/> Đang bật giám sát</span>
-                 ) : (
-                   <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1 mt-1 w-max"><BookOpen size={12}/> Luyện tập tự do</span>
-                 )
+                 <div className="flex items-center gap-2 mt-1">
+                   {isExamMode ? (
+                     <span className="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded flex items-center gap-1 w-max"><ShieldAlert size={12}/> Đang bật giám sát</span>
+                   ) : (
+                     <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded flex items-center gap-1 w-max"><BookOpen size={12}/> Luyện tập tự do</span>
+                   )}
+                   
+                   {/* ĐỒNG HỒ ĐẾM NGƯỢC HIỂN THỊ Ở ĐÂY */}
+                   {timeLeft !== null && (
+                     <span className={`text-[11px] font-black px-2 py-0.5 rounded flex items-center gap-1 w-max transition-colors ${timeLeft < 60 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-gray-200 text-gray-800'}`}>
+                       <Clock size={12}/> {formatTime(timeLeft)}
+                     </span>
+                   )}
+                 </div>
                )}
             </div>
             <button onClick={submitExam} className="bg-black text-white px-5 py-2.5 rounded-xl font-black hover:bg-gray-800 hover:-translate-y-0.5 transition-all shadow-md hover:shadow-lg">NỘP BÀI</button>
@@ -826,7 +942,6 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
 function ExamResult({ exam, results, navigate, currentUser }) {
   const [playingVideo, setPlayingVideo] = useState(null);
 
-  // Bộ lọc thông minh tự chuyển đổi link Youtube sang định dạng chạy nhúng
   const getEmbedUrl = (url) => {
     if (!url) return '';
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -836,7 +951,6 @@ function ExamResult({ exam, results, navigate, currentUser }) {
 
   return (
     <>
-      {/* Cửa sổ chiếu Video (Rạp chiếu phim In-app) */}
       {playingVideo && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-4 backdrop-blur-sm transition-opacity">
           <div className="bg-black rounded-3xl w-full max-w-4xl shadow-2xl animate-pop overflow-hidden relative border border-gray-800">
@@ -939,6 +1053,15 @@ function AuthScreen({ authMode, setAuthMode, authForm, setAuthForm, handleAuth }
                </label>
              </div>
           )}
+          
+          {/* TÍNH NĂNG GHI NHỚ ĐĂNG NHẬP */}
+          {authMode === 'login' && (
+            <div className="flex items-center gap-2 mt-2 px-1">
+              <input type="checkbox" id="remember" className="w-4 h-4 accent-black cursor-pointer" checked={authForm.remember} onChange={e => setAuthForm({...authForm, remember: e.target.checked})} />
+              <label htmlFor="remember" className="text-sm font-bold text-gray-600 cursor-pointer select-none">Ghi nhớ đăng nhập (Auto-login)</label>
+            </div>
+          )}
+
           <button onClick={handleAuth} className="w-full bg-black text-white p-4 rounded-xl font-black text-lg hover:bg-gray-800 hover:-translate-y-1 transition-all shadow-lg mt-4">
             {authMode === 'login' ? 'ĐĂNG NHẬP' : 'TẠO TÀI KHOẢN'}
           </button>
