@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// Sử dụng thư viện từ ESM để tương thích tuyệt đối với cả môi trường Web và Node/Vite
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '@supabase/supabase-js';
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
   CheckCircle, XCircle, PlayCircle, AlertTriangle, 
@@ -197,6 +196,7 @@ export default function App() {
   );
 }
 
+// ================= COMPONENT TIỆN ÍCH =================
 function Toast({ toast }) {
   if (!toast) return null;
   const bgColors = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-blue-600' };
@@ -223,6 +223,8 @@ function ConfirmModal({ confirmDialog, setConfirmDialog }) {
     </div>
   );
 }
+
+// ================= CÁC COMPONENT GIAO DIỆN CON =================
 
 function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollments, navigate, supabase, showToast, showConfirm, results, exams, allUsers }) {
   const [joinCode, setJoinCode] = useState('');
@@ -360,7 +362,6 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                       const examInfo = exams.find(e => e.id === r.exam_id);
                       const displayScore = ((r.score / r.total) * 10).toFixed(1);
                       return (
-                        /* ĐÃ BỔ SUNG h-full CHO KHUNG CHỨA CỘT ĐỂ KHÔNG BỊ TÀNG HÌNH */
                         <div key={i} className="flex-1 flex flex-col items-center justify-end group min-w-[40px] h-full">
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity text-xs font-black mb-2 text-black bg-gray-100 px-2 py-1 rounded-md">{displayScore}</div>
                           <div className="w-full max-w-[40px] bg-gradient-to-t from-gray-900 to-gray-700 rounded-t-xl transition-all duration-500 shadow-md group-hover:from-blue-600 group-hover:to-blue-400 relative overflow-hidden" style={{ height: `${heightPercent}%` }}>
@@ -590,6 +591,9 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
                     const deadlineText = exam.deadline ? new Date(exam.deadline).toLocaleString('vi-VN') : 'Không giới hạn';
                     const isExamMode = exam.exam_type === 'exam';
 
+                    const attemptsCount = results.filter(r => r.exam_id === exam.id && r.student_id === currentUser.id).length;
+                    const hasReachedMaxAttempts = exam.maxAttempts && attemptsCount >= exam.maxAttempts;
+
                     return (
                       <div key={exam.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4 group">
                         <div className="flex items-center gap-5">
@@ -618,8 +622,13 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
                           {currentUser.role === 'student' ? (
                             isExpired ? (
                               <button disabled className="bg-gray-200 text-gray-400 px-8 py-3 rounded-xl text-sm font-bold cursor-not-allowed">Đã hết hạn</button>
+                            ) : hasReachedMaxAttempts ? (
+                              <button disabled className="bg-red-100 text-red-500 px-6 py-3 rounded-xl text-sm font-bold cursor-not-allowed border border-red-200">Đã hết {exam.maxAttempts} lượt làm bài</button>
                             ) : (
-                              <button onClick={() => navigate('exam_taker', { exam })} className="bg-black text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-gray-800 hover:scale-105 shadow-md transition-all">Làm bài</button>
+                              <div className="flex flex-col items-end gap-1">
+                                <button onClick={() => navigate('exam_taker', { exam })} className="bg-black text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-gray-800 hover:scale-105 shadow-md transition-all w-full">Làm bài</button>
+                                {exam.maxAttempts && <span className="text-[10px] text-gray-500 font-bold">Lượt: {attemptsCount}/{exam.maxAttempts}</span>}
+                              </div>
                             )
                           ) : (
                             <>
@@ -730,6 +739,7 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase, showToast }) {
   const [questions, setQuestions] = useState([]);
   const [deadline, setDeadline] = useState(''); 
   const [duration, setDuration] = useState(''); 
+  const [maxAttempts, setMaxAttempts] = useState(''); 
   const [isSaving, setIsSaving] = useState(false);
 
   const addQuestion = (type) => {
@@ -766,7 +776,8 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase, showToast }) {
       deadline: deadline || null,
       is_hidden: false,
       exam_type: examType,
-      duration: examType === 'exam' && duration ? parseInt(duration) : null 
+      duration: examType === 'exam' && duration ? parseInt(duration) : null,
+      maxAttempts: examType === 'exam' && maxAttempts ? parseInt(maxAttempts) : null 
     };
     
     await supabase.from('edu_exams').insert([newExam]);
@@ -808,8 +819,9 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase, showToast }) {
              </div>
              
              {examType === 'exam' && (
-               <div className="mt-4 animate-fade-in-down">
+               <div className="mt-4 space-y-4 animate-fade-in-down">
                  <input type="number" placeholder="Thời gian làm bài (Phút) - Để trống nếu không tính giờ" className="w-full border-2 border-purple-200 p-4 rounded-xl font-bold outline-none focus:border-purple-500 transition-colors bg-purple-50 focus:bg-white text-purple-900 placeholder:text-purple-300" value={duration} onChange={e => setDuration(e.target.value)} min="1" />
+                 <input type="number" placeholder="Số lần làm bài tối đa (VD: 1) - Để trống = Vô hạn" className="w-full border-2 border-purple-200 p-4 rounded-xl font-bold outline-none focus:border-purple-500 transition-colors bg-purple-50 focus:bg-white text-purple-900 placeholder:text-purple-300" value={maxAttempts} onChange={e => setMaxAttempts(e.target.value)} min="1" />
                </div>
              )}
            </div>
@@ -847,7 +859,7 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase, showToast }) {
                 <div key={q.id} className="p-5 bg-gray-50 border border-gray-100 rounded-2xl relative animate-pop">
                   <button onClick={() => setQuestions(questions.filter(item => item.id !== q.id))} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18}/></button>
                   <h4 className="font-black mb-3 text-gray-800">Câu {i + 1}</h4>
-                  <input type="text" placeholder="Nhập đáp án đúng..." className="p-3 border-2 border-gray-200 rounded-xl font-bold w-full mb-3 outline-none focus:border-black transition-colors" value={q.correct} onChange={e => updateQuestion(q.id, 'correct', e.target.value)} />
+                  <input type="text" placeholder={q.type === 'short' ? "Nhập đáp án (Dùng dấu | nếu có nhiều đáp án. VD: A|B)" : "Nhập đáp án đúng..."} className="p-3 border-2 border-gray-200 rounded-xl font-bold w-full mb-3 outline-none focus:border-black transition-colors" value={q.correct} onChange={e => updateQuestion(q.id, 'correct', e.target.value)} />
                   <input type="text" placeholder="Link video giải (tùy chọn)" className="p-3 border-2 border-gray-200 rounded-xl text-sm w-full outline-none focus:border-blue-500 transition-colors" value={q.videoUrl} onChange={e => updateQuestion(q.id, 'videoUrl', e.target.value)} />
                 </div>
              ))}
@@ -936,8 +948,12 @@ function ExamTaker({ exam, navigate, currentUser, resultsState, setResultsState,
     let score = 0;
     const questionsList = exam.questions || [];
     const details = questionsList.map(q => {
-      const isCorrect = String(answers[q.id] || '').toLowerCase().trim() === String(q.correct).toLowerCase().trim();
+      const userAnswer = String(answers[q.id] || '').toLowerCase().trim();
+      const correctAnswers = String(q.correct).toLowerCase().split('|').map(s => s.trim());
+      
+      const isCorrect = correctAnswers.includes(userAnswer);
       if (isCorrect) score++;
+      
       return { questionId: q.id, userAnswer: answers[q.id] || '', isCorrect };
     });
 
