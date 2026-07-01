@@ -178,6 +178,14 @@ export default function App() {
         {currentView === 'exam_result' && <ExamResult exam={selectedExam} results={selectedExam.results} navigate={navigate} currentUser={currentUser} />}
       </main>
 
+      {/* DẤU ẤN NHÀ PHÁT TRIỂN (BÊN TRONG ỨNG DỤNG) */}
+      <footer className="py-6 text-center text-sm font-bold text-gray-400 no-print border-t border-gray-200 mt-auto bg-gray-50/80">
+        <p>
+          Được thiết kế và phát triển bởi <span className="text-black font-black hover:underline cursor-pointer transition-colors" title="Nhà phát triển hệ thống">TÊN CỦA BẠN</span>
+        </p>
+        <p className="text-xs mt-1.5 font-medium">EduSheet © 2026 - Nền tảng Giáo dục Tối giản</p>
+      </footer>
+
       <style>{`
         @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
@@ -1353,7 +1361,7 @@ function LoadingScreen() {
 
 function AuthScreen({ authMode, setAuthMode, authForm, setAuthForm, handleAuth }) {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 relative">
       <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md animate-pop border border-gray-100">
         <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-6 transform rotate-3 hover:rotate-6 transition-transform">
            <Layout size={32} />
@@ -1398,6 +1406,11 @@ function AuthScreen({ authMode, setAuthMode, authForm, setAuthForm, handleAuth }
              <>Đã có tài khoản? <button onClick={() => setAuthMode('login')} className="text-black font-black hover:underline">Đăng nhập</button></>
            )}
         </div>
+      </div>
+
+      {/* DẤU ẤN NHÀ PHÁT TRIỂN (TRANG ĐĂNG NHẬP) */}
+      <div className="absolute bottom-8 text-center text-sm font-bold text-gray-400 animate-fade-in-down">
+        Phát triển bởi <span className="text-gray-800 font-black">Hong Quang Tech</span>
       </div>
     </div>
   );
