@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
   CheckCircle, XCircle, PlayCircle, AlertTriangle, 
@@ -232,15 +232,15 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
   const [showCreateClass, setShowCreateClass] = useState(false);
   const [newClassName, setNewClassName] = useState('');
 
-  // TÍNH TOÁN DỮ LIỆU THỐNG KÊ (DÀNH CHO HỌC SINH)
+  // ----------------------------------------------------
+  // DỮ LIỆU THỐNG KÊ (DÀNH CHO HỌC SINH)
+  // ----------------------------------------------------
   const myResults = results?.filter(r => r.student_id === currentUser.id) || [];
   const totalExamsTaken = myResults.length;
-  // Tính điểm trung bình (Thang điểm 10)
   const avgScore = totalExamsTaken > 0 
     ? (myResults.reduce((acc, curr) => acc + (curr.score / curr.total) * 10, 0) / totalExamsTaken).toFixed(1)
     : 0;
 
-  // Tính toán Bảng xếp hạng (Leaderboard) - Tổng hợp điểm các học sinh
   const studentStats = allUsers?.filter(u => u.role === 'student').map(student => {
     const stuResults = results?.filter(r => r.student_id === student.id) || [];
     const avg = stuResults.length > 0
@@ -250,10 +250,48 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
   }).filter(s => s.totalExams > 0).sort((a, b) => b.avg - a.avg) || [];
 
   const myRank = studentStats.findIndex(s => s.id === currentUser.id) + 1;
-  const topStudents = studentStats.slice(0, 5); // Lấy Top 5
-  
-  // Dữ liệu biểu đồ (Lấy 10 bài gần nhất)
+  const topStudents = studentStats.slice(0, 5);
   const chartData = myResults.slice(-10);
+
+  // ----------------------------------------------------
+  // DỮ LIỆU THỐNG KÊ MỚI (DÀNH CHO GIÁO VIÊN)
+  // ----------------------------------------------------
+  const myClasses = currentUser.role === 'teacher' 
+    ? classes.filter(c => c.teacherId === currentUser.id) 
+    : classes.filter(c => enrollments.some(e => e.class_id === c.id && e.student_id === currentUser.id));
+
+  // Gom nhóm các lớp của giáo viên
+  const myClassIds = myClasses.map(c => c.id);
+  
+  // Tính tổng số học sinh duy nhất trong tất cả các lớp
+  const uniqueStudentsCount = new Set(enrollments.filter(e => myClassIds.includes(e.class_id)).map(e => e.student_id)).size;
+  // Tính tổng số đề thi đã tạo (không tính đề bị ẩn)
+  const teacherExamsCount = exams.filter(e => myClassIds.includes(e.classId) && !e.is_hidden).length;
+  // Tính tổng số lượt nộp bài của học sinh
+  const teacherResults = results.filter(r => myClassIds.includes(r.class_id));
+  
+  // Radar quét kẻ địch (Lấy top 5 gian lận mới nhất)
+  const cheatIncidents = teacherResults
+    .filter(r => r.cheat_count > 0)
+    .sort((a, b) => {
+      // Lấy thời gian từ ID (vd: res_1699999999) để xếp mới nhất lên đầu
+      const timeA = parseInt(a.id.split('_')[1]) || 0;
+      const timeB = parseInt(b.id.split('_')[1]) || 0;
+      return timeB - timeA;
+    })
+    .slice(0, 5)
+    .map(r => {
+      const student = allUsers.find(u => u.id === r.student_id);
+      const exam = exams.find(e => e.id === r.exam_id);
+      const cls = classes.find(c => c.id === r.class_id);
+      return { 
+        ...r, 
+        studentName: student?.name || 'Học sinh ẩn danh', 
+        examTitle: exam?.title || 'Bài thi đã xóa', 
+        className: cls?.name || 'Lớp đã xóa' 
+      };
+    });
+
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -263,10 +301,6 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
-
-  const myClasses = currentUser.role === 'teacher' 
-    ? classes.filter(c => c.teacherId === currentUser.id) 
-    : classes.filter(c => enrollments.some(e => e.class_id === c.id && e.student_id === currentUser.id));
 
   const handleCreateClass = async () => {
     if (!newClassName.trim()) return showToast('Vui lòng nhập tên lớp!', 'error');
@@ -322,6 +356,9 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
 
       <div className="space-y-8 page-transition">
         
+        {/* ==================================================== */}
+        {/* BẢNG TỔNG KẾT VÀ THỐNG KÊ (DÀNH CHO HỌC SINH) */}
+        {/* ==================================================== */}
         {currentUser.role === 'student' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -398,6 +435,77 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+
+        {/* ==================================================== */}
+        {/* TÍNH NĂNG MỚI: BẢNG TIN DÀNH RIÊNG CHO GIÁO VIÊN */}
+        {/* ==================================================== */}
+        {currentUser.role === 'teacher' && (
+          <div className="space-y-6">
+            {/* 1. Thẻ Sức Mạnh (Thống kê Tổng quan) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                <Users className="absolute top-4 right-4 opacity-20" size={80} />
+                <h3 className="font-bold text-indigo-200 mb-1">Tổng Số Học Sinh</h3>
+                <div className="text-5xl font-black">{uniqueStudentsCount}</div>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                <FileText className="absolute top-4 right-4 opacity-20" size={80} />
+                <h3 className="font-bold text-emerald-200 mb-1">Tổng Số Đề Đã Giao</h3>
+                <div className="text-5xl font-black">{teacherExamsCount}</div>
+              </div>
+              <div className="bg-gradient-to-br from-cyan-500 to-cyan-700 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                <CheckCircle className="absolute top-4 right-4 opacity-20" size={80} />
+                <h3 className="font-bold text-cyan-200 mb-1">Tổng Lượt Nộp Bài</h3>
+                <div className="text-5xl font-black">{teacherResults.length}</div>
+              </div>
+            </div>
+
+            {/* 2. Radar Quét Kẻ Địch (Cảnh Báo Gian Lận) */}
+            <div className="bg-white p-8 rounded-3xl border border-red-100 shadow-sm flex flex-col relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-500"></div>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="text-red-500" />
+                    <h3 className="text-xl font-black text-gray-800">Radar Cảnh Báo Gian Lận</h3>
+                    {cheatIncidents.length > 0 && <span className="ml-2 bg-red-100 text-red-600 text-xs font-black px-2.5 py-1 rounded-full animate-pulse tracking-wide uppercase">Có phát hiện mới</span>}
+                  </div>
+                </div>
+                
+                {cheatIncidents.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-gray-400 py-6 border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50">
+                    <CheckCircle size={40} className="mb-2 text-green-300" />
+                    <p className="font-bold">Tốt quá! Không phát hiện học sinh nào có dấu hiệu gian lận.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {cheatIncidents.map((incident, i) => (
+                      <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-red-50/50 rounded-2xl border border-red-100 hover:bg-red-50 transition-colors gap-4">
+                        <div className="flex items-start sm:items-center gap-4">
+                            <div className="w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center shrink-0 shadow-inner">
+                                <AlertTriangle size={24} />
+                            </div>
+                            <div>
+                                <div className="font-bold text-gray-800 text-base">
+                                    Học sinh <span className="text-black font-black bg-white px-2 py-0.5 rounded shadow-sm border border-gray-200 mx-1">{incident.studentName}</span> vừa thoát màn hình
+                                </div>
+                                <div className="text-sm text-gray-500 font-medium mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                    <span>Lớp: <span className="font-black text-gray-700">{incident.className}</span></span>
+                                    <span className="text-gray-300">•</span>
+                                    <span>Bài thi: <span className="font-black text-gray-700">{incident.examTitle}</span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-red-500 text-white font-black text-lg px-4 py-2 rounded-xl shadow-sm whitespace-nowrap self-end sm:self-auto shrink-0">
+                           {incident.cheat_count} lần
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
             </div>
           </div>
         )}
@@ -564,6 +672,7 @@ function ClassDetail({ currentUser, cls, exams, enrollments, setEnrollments, all
           </div>
         )}
 
+        {/* TAB BÀI TẬP */}
         {activeTab === 'exams' && (
           <div className="space-y-6 no-print animate-fade-in-down">
             {currentUser.role === 'teacher' && (
@@ -863,9 +972,8 @@ function ExamCreator({ cls, navigate, setExams, exams, supabase, showToast }) {
         <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm h-[85vh] flex flex-col transition-shadow hover:shadow-md">
           <h3 className="font-black text-sm uppercase mb-4 text-gray-700">5. Thiết lập Phiếu Trả Lời</h3>
           
-          {/* TÍNH NĂNG MỚI: Khu vực nhập số lượng tạo nhanh */}
           <div className="bg-gray-50 p-4 rounded-2xl mb-4 border border-gray-200">
-            <h4 className="font-bold text-sm mb-3 text-gray-600">Tạo nhanh số lượng lớn:</h4>
+            <h4 className="font-bold text-sm mb-3 text-gray-600 flex items-center gap-2">Tạo nhanh số lượng lớn:</h4>
             <div className="flex flex-wrap gap-4 items-end">
               <div>
                 <label className="text-xs font-bold text-gray-500 block mb-1">A-B-C-D</label>
