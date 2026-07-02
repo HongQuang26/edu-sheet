@@ -9,10 +9,10 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// KẾT NỐI SUPABASE CHÍNH THỨC CỦA BẠN (PRODUCTION)
+// KẾT NỐI SUPABASE CHÍNH THỨC QUA BIẾN MÔI TRƯỜNG (.env)
 // ==========================================
-const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -232,6 +232,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
   const [showCreateClass, setShowCreateClass] = useState(false);
   const [newClassName, setNewClassName] = useState('');
 
+  // DỮ LIỆU THỐNG KÊ (DÀNH CHO HỌC SINH)
   const myResults = results?.filter(r => r.student_id === currentUser.id) || [];
   const totalExamsTaken = myResults.length;
   const avgScore = totalExamsTaken > 0 
@@ -250,6 +251,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
   const topStudents = studentStats.slice(0, 5);
   const chartData = myResults.slice(-10);
 
+  // DỮ LIỆU THỐNG KÊ (DÀNH CHO GIÁO VIÊN)
   const myClasses = currentUser.role === 'teacher' 
     ? classes.filter(c => c.teacherId === currentUser.id) 
     : classes.filter(c => enrollments.some(e => e.class_id === c.id && e.student_id === currentUser.id));
@@ -329,7 +331,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
             <h3 className="text-2xl font-black mb-6 text-black">Tạo lớp học mới</h3>
             <input 
               type="text" placeholder="Nhập tên lớp..." 
-              className="w-full border-2 border-gray-200 p-4 rounded-xl mb-6 outline-none focus:border-black font-medium transition-colors bg-gray-50 focus:bg-white"
+              className="w-full border-2 border-gray-200 p-4 rounded-xl mb-6 outline-none focus:border-black font-medium transition-colors bg-gray-50 focus:bg-white text-black"
               value={newClassName} onChange={(e) => setNewClassName(e.target.value)}
             />
             <div className="flex justify-end gap-3">
@@ -341,6 +343,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
       )}
 
       <div className="space-y-8 page-transition">
+        {/* STUDENT STATS */}
         {currentUser.role === 'student' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -420,6 +423,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
           </div>
         )}
 
+        {/* TEACHER STATS */}
         {currentUser.role === 'teacher' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -485,6 +489,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
           </div>
         )}
 
+        {/* MY CLASSES LIST */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-t border-gray-200 pt-8 mt-8">
           <h2 className="text-3xl font-black tracking-tight flex items-center gap-2">
             <BookOpen size={28}/> Lớp học của tôi
@@ -499,7 +504,7 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
                 <div className="flex gap-2 w-full sm:w-auto">
                   <input 
                     type="text" placeholder="Nhập mã lớp..." 
-                    className="border-2 border-gray-200 rounded-xl px-4 py-2 outline-none focus:border-black font-bold uppercase w-40 transition-colors bg-white"
+                    className="border-2 border-gray-200 rounded-xl px-4 py-2 outline-none focus:border-black font-bold uppercase w-40 transition-colors bg-white text-black"
                     value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                   />
                   <button onClick={() => handleJoinClass(joinCode)} className="bg-black text-white px-6 py-2 rounded-xl font-bold hover:bg-gray-800 transition-transform hover:scale-105 active:scale-95 shadow-sm">Vào</button>
@@ -558,7 +563,6 @@ function ClassDetail({ currentUser, cls, classes, setClasses, exams, enrollments
   const [newDeadline, setNewDeadline] = useState(''); 
 
   const currentCls = classes.find(c => c.id === cls.id) || cls;
-
   const [isEditingAnnouncement, setIsEditingAnnouncement] = useState(false);
   const [announcementText, setAnnouncementText] = useState(currentCls.announcement || '');
 
@@ -649,6 +653,7 @@ function ClassDetail({ currentUser, cls, classes, setClasses, exams, enrollments
           </div>
         </div>
 
+        {/* BẢNG THÔNG BÁO GHIM TỐI GIẢN */}
         {(currentUser.role === 'teacher' || currentCls.announcement) && (
           <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm no-print relative overflow-hidden group hover:shadow-md transition-shadow">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-black"></div>
@@ -699,6 +704,7 @@ function ClassDetail({ currentUser, cls, classes, setClasses, exams, enrollments
           </div>
         )}
 
+        {/* TAB BÀI TẬP */}
         {activeTab === 'exams' && (
           <div className="space-y-6 no-print animate-fade-in-down">
             {currentUser.role === 'teacher' && (
@@ -780,6 +786,7 @@ function ClassDetail({ currentUser, cls, classes, setClasses, exams, enrollments
           </div>
         )}
 
+        {/* TAB BẢNG ĐIỂM */}
         {activeTab === 'students' && currentUser.role === 'teacher' && (
           <div className="space-y-6 animate-fade-in-down">
             <div className="flex justify-between items-center no-print">
@@ -1427,6 +1434,7 @@ function AuthScreen({ authMode, setAuthMode, authForm, setAuthForm, handleAuth }
         </div>
       </div>
 
+      {/* DẤU ẤN NHÀ PHÁT TRIỂN Ở TRANG ĐĂNG NHẬP */}
       <div className="absolute bottom-8 text-center text-sm font-bold text-gray-400 animate-fade-in-down">
         Phát triển bởi <span className="text-gray-800 font-black hover:underline cursor-pointer">TÊN CỦA BẠN</span>
       </div>
