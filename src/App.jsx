@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
   CheckCircle, XCircle, PlayCircle, AlertTriangle, 
@@ -9,8 +8,32 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// KẾT NỐI SUPABASE CHÍNH THỨC CỦA BẠN
+// MÔ PHỎNG SUPABASE CHO MÔI TRƯỜNG XEM TRƯỚC
+// ⚠️ KHI DEPLOY LÊN VERCEL: Hãy xóa đoạn này và thêm lại dòng import { createClient } from '@supabase/supabase-js';
 // ==========================================
+const createClient = (url, key) => ({
+  auth: {
+    getSession: () => Promise.resolve({ data: { session: null } }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    signInWithPassword: () => Promise.resolve({ error: new Error('Đây là bản xem trước. Hãy chạy trên Vercel để đăng nhập thật!') }),
+    signUp: () => Promise.resolve({ error: new Error('Đây là bản xem trước. Hãy chạy trên Vercel để đăng ký thật!') }),
+    signOut: () => Promise.resolve()
+  },
+  from: () => ({
+    select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null }) }), then: (cb) => { cb({ data: [] }); return Promise.resolve({ data: [] }); } }),
+    insert: () => Promise.resolve({ error: null }),
+    update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+    delete: () => ({ eq: () => Promise.resolve({ error: null }), match: () => Promise.resolve({ error: null }) })
+  }),
+  storage: {
+    from: () => ({
+      upload: () => Promise.resolve({ error: null }),
+      getPublicUrl: () => ({ data: { publicUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' } }),
+      remove: () => Promise.resolve({ error: null })
+    })
+  }
+});
+
 const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
 
@@ -181,7 +204,7 @@ export default function App() {
       {/* DẤU ẤN NHÀ PHÁT TRIỂN (BÊN TRONG ỨNG DỤNG) */}
       <footer className="py-6 text-center text-sm font-bold text-gray-400 no-print border-t border-gray-200 mt-auto bg-gray-50/80">
         <p>
-          Được thiết kế và phát triển bởi <span className="text-black font-black hover:underline cursor-pointer transition-colors" title="Nhà phát triển hệ thống">NGUYEN HONG QUANG</span>
+          Được thiết kế và phát triển bởi <span className="text-black font-black hover:underline cursor-pointer transition-colors" title="Nhà phát triển hệ thống">TÊN CỦA BẠN</span>
         </p>
         <p className="text-xs mt-1.5 font-medium">EduSheet © 2026 - Nền tảng Giáo dục Tối giản</p>
       </footer>
@@ -580,12 +603,15 @@ function ClassDetail({ currentUser, cls, classes, setClasses, exams, enrollments
   const [extendingExam, setExtendingExam] = useState(null); 
   const [newDeadline, setNewDeadline] = useState(''); 
 
-  // TÍNH NĂNG MỚI: Trạng thái Bảng thông báo
-  const [isEditingAnnouncement, setIsEditingAnnouncement] = useState(false);
-  const [announcementText, setAnnouncementText] = useState(cls.announcement || '');
+  // Đồng bộ dữ liệu lớp học trực tiếp từ danh sách tổng
+  const currentCls = classes.find(c => c.id === cls.id) || cls;
 
-  const joinLink = `${window.location.origin}${window.location.pathname}?join=${cls.code}`;
-  const classStudents = enrollments.filter(e => e.class_id === cls.id).map(e => allUsers.find(u => u.id === e.student_id)).filter(Boolean); 
+  // Trạng thái Bảng thông báo
+  const [isEditingAnnouncement, setIsEditingAnnouncement] = useState(false);
+  const [announcementText, setAnnouncementText] = useState(currentCls.announcement || '');
+
+  const joinLink = `${window.location.origin}${window.location.pathname}?join=${currentCls.code}`;
+  const classStudents = enrollments.filter(e => e.class_id === currentCls.id).map(e => allUsers.find(u => u.id === e.student_id)).filter(Boolean); 
   const visibleExams = exams.filter(e => !e.is_hidden);
 
   const copyLink = () => { 
@@ -617,16 +643,16 @@ function ClassDetail({ currentUser, cls, classes, setClasses, exams, enrollments
 
   const handleRemoveStudent = (student) => {
     showConfirm(`Bạn có chắc muốn mời học sinh "${student.name}" ra khỏi lớp không?`, async () => {
-      await supabase.from('edu_enrollments').delete().match({ class_id: cls.id, student_id: student.id });
-      setEnrollments(prev => prev.filter(e => !(e.class_id === cls.id && e.student_id === student.id)));
+      await supabase.from('edu_enrollments').delete().match({ class_id: currentCls.id, student_id: student.id });
+      setEnrollments(prev => prev.filter(e => !(e.class_id === currentCls.id && e.student_id === student.id)));
       showToast(`Đã mời học sinh ${student.name} ra khỏi lớp!`);
     });
   };
 
-  // TÍNH NĂNG MỚI: Xử lý lưu thông báo
+  // Xử lý lưu thông báo
   const handleSaveAnnouncement = async () => {
-    await supabase.from('edu_classes').update({ announcement: announcementText }).eq('id', cls.id);
-    setClasses(classes.map(c => c.id === cls.id ? { ...c, announcement: announcementText } : c));
+    await supabase.from('edu_classes').update({ announcement: announcementText }).eq('id', currentCls.id);
+    setClasses(classes.map(c => c.id === currentCls.id ? { ...c, announcement: announcementText } : c));
     setIsEditingAnnouncement(false);
     showToast('Đã ghim thông báo thành công!');
   };
@@ -660,10 +686,10 @@ function ClassDetail({ currentUser, cls, classes, setClasses, exams, enrollments
         <div className="bg-white border border-gray-200 text-black p-8 sm:p-10 rounded-[2rem] shadow-sm relative overflow-hidden transition-all duration-300 hover:shadow-md hover:border-black">
           <div className="absolute top-0 left-0 w-2 h-full bg-black"></div>
           <div className="relative z-10 pl-2">
-            <h1 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight">{cls.name}</h1>
+            <h1 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight">{currentCls.name}</h1>
             {currentUser.role === 'teacher' && (
               <div className="flex flex-wrap items-center gap-3">
-                <span className="text-gray-500 font-medium text-sm">Mã tham gia: <span className="text-black font-mono font-black bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg ml-1">{cls.code}</span></span>
+                <span className="text-gray-500 font-medium text-sm">Mã tham gia: <span className="text-black font-mono font-black bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg ml-1">{currentCls.code}</span></span>
                 <button onClick={copyLink} className="flex items-center gap-1.5 bg-white border border-gray-200 hover:border-black px-3 py-1.5 rounded-lg text-sm font-bold transition-colors no-print text-black shadow-sm">
                   <LinkIcon size={14} /> Copy Link
                 </button>
@@ -672,43 +698,43 @@ function ClassDetail({ currentUser, cls, classes, setClasses, exams, enrollments
           </div>
         </div>
 
-        {/* TÍNH NĂNG MỚI: BẢNG THÔNG BÁO GHIM TỐI GIẢN */}
-        {(currentUser.role === 'teacher' || cls.announcement) && (
+        {/* BẢNG THÔNG BÁO GHIM TỐI GIẢN */}
+        {(currentUser.role === 'teacher' || currentCls.announcement) && (
           <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm no-print relative overflow-hidden group hover:shadow-md transition-shadow">
-             <div className="absolute top-0 left-0 w-1.5 h-full bg-black"></div>
-             <div className="flex items-start gap-4 pl-2">
-                 <div className="w-10 h-10 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center shrink-0 text-black">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-black"></div>
+            <div className="flex items-start gap-4 pl-2">
+                <div className="w-10 h-10 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center shrink-0 text-black">
                     <Bell size={20} />
-                 </div>
-                 <div className="flex-1">
+                </div>
+                <div className="flex-1">
                     <div className="flex justify-between items-center mb-2">
-                       <h3 className="font-black text-black">Thông báo từ Giáo viên</h3>
-                       {currentUser.role === 'teacher' && !isEditingAnnouncement && (
-                         <button onClick={() => setIsEditingAnnouncement(true)} className="text-sm font-bold text-gray-500 hover:text-black transition-colors flex items-center gap-1.5 bg-white hover:bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+                      <h3 className="font-black text-black">Thông báo từ Giáo viên</h3>
+                      {currentUser.role === 'teacher' && !isEditingAnnouncement && (
+                        <button onClick={() => setIsEditingAnnouncement(true)} className="text-sm font-bold text-gray-500 hover:text-black transition-colors flex items-center gap-1.5 bg-white hover:bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
                             <Edit3 size={14}/> Sửa
-                         </button>
-                       )}
+                        </button>
+                      )}
                     </div>
                     {isEditingAnnouncement ? (
-                       <div className="animate-fade-in-down mt-3">
-                         <textarea 
-                           className="w-full border-2 border-gray-200 rounded-xl p-4 font-bold outline-none focus:border-black transition-colors min-h-[100px] bg-gray-50 focus:bg-white text-black"
-                           placeholder="Nhập nội dung dặn dò học sinh..."
-                           value={announcementText}
-                           onChange={e => setAnnouncementText(e.target.value)}
-                         />
-                         <div className="flex justify-end gap-2 mt-3">
-                            <button onClick={() => { setIsEditingAnnouncement(false); setAnnouncementText(cls.announcement || ''); }} className="px-5 py-2.5 font-bold text-gray-700 bg-white border-2 border-gray-200 hover:border-black rounded-xl transition-colors text-sm">Hủy</button>
+                      <div className="animate-fade-in-down mt-3">
+                        <textarea 
+                          className="w-full border-2 border-gray-200 rounded-xl p-4 font-bold outline-none focus:border-black transition-colors min-h-[100px] bg-gray-50 focus:bg-white text-black"
+                          placeholder="Nhập nội dung dặn dò học sinh..."
+                          value={announcementText}
+                          onChange={e => setAnnouncementText(e.target.value)}
+                        />
+                        <div className="flex justify-end gap-2 mt-3">
+                            <button onClick={() => { setIsEditingAnnouncement(false); setAnnouncementText(currentCls.announcement || ''); }} className="px-5 py-2.5 font-bold text-gray-700 bg-white border-2 border-gray-200 hover:border-black rounded-xl transition-colors text-sm">Hủy</button>
                             <button onClick={handleSaveAnnouncement} className="px-5 py-2.5 font-bold text-white bg-black hover:bg-gray-800 rounded-xl transition-transform hover:scale-105 active:scale-95 shadow-md text-sm">Ghim thông báo</button>
-                         </div>
-                       </div>
+                        </div>
+                      </div>
                     ) : (
-                       <div className="text-gray-700 font-medium whitespace-pre-wrap mt-1 text-sm sm:text-base leading-relaxed">
-                          {cls.announcement ? cls.announcement : <span className="text-gray-400 italic font-medium">Chưa có thông báo nào. Bấm "Sửa" để dặn dò học sinh.</span>}
-                       </div>
+                      <div className="text-gray-700 font-medium whitespace-pre-wrap mt-1 text-sm sm:text-base leading-relaxed">
+                          {currentCls.announcement ? currentCls.announcement : <span className="text-gray-400 italic font-medium">Chưa có thông báo nào. Bấm "Sửa" để dặn dò học sinh.</span>}
+                      </div>
                     )}
-                 </div>
-             </div>
+                </div>
+            </div>
           </div>
         )}
 
@@ -1453,7 +1479,7 @@ function AuthScreen({ authMode, setAuthMode, authForm, setAuthForm, handleAuth }
 
       {/* DẤU ẤN NHÀ PHÁT TRIỂN Ở TRANG ĐĂNG NHẬP */}
       <div className="absolute bottom-8 text-center text-sm font-bold text-gray-400 animate-fade-in-down">
-        Phát triển bởi <span className="text-gray-800 font-black hover:underline cursor-pointer">NGUYEN HONG QUANG</span>
+        Phát triển bởi <span className="text-gray-800 font-black hover:underline cursor-pointer">TÊN CỦA BẠN</span>
       </div>
     </div>
   );
