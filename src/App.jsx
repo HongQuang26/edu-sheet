@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { 
   BookOpen, Users, FileText, Upload, Plus, LogOut, 
   CheckCircle, XCircle, PlayCircle, AlertTriangle, 
@@ -8,32 +9,8 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// MÔ PHỎNG SUPABASE CHO MÔI TRƯỜNG XEM TRƯỚC
-// ⚠️ KHI DEPLOY LÊN VERCEL: Hãy xóa đoạn này và thêm lại dòng import { createClient } from '@supabase/supabase-js';
+// KẾT NỐI SUPABASE CHÍNH THỨC CỦA BẠN (PRODUCTION)
 // ==========================================
-const createClient = (url, key) => ({
-  auth: {
-    getSession: () => Promise.resolve({ data: { session: null } }),
-    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-    signInWithPassword: () => Promise.resolve({ error: new Error('Đây là bản xem trước. Hãy chạy trên Vercel để đăng nhập thật!') }),
-    signUp: () => Promise.resolve({ error: new Error('Đây là bản xem trước. Hãy chạy trên Vercel để đăng ký thật!') }),
-    signOut: () => Promise.resolve()
-  },
-  from: () => ({
-    select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null }) }), then: (cb) => { cb({ data: [] }); return Promise.resolve({ data: [] }); } }),
-    insert: () => Promise.resolve({ error: null }),
-    update: () => ({ eq: () => Promise.resolve({ error: null }) }),
-    delete: () => ({ eq: () => Promise.resolve({ error: null }), match: () => Promise.resolve({ error: null }) })
-  }),
-  storage: {
-    from: () => ({
-      upload: () => Promise.resolve({ error: null }),
-      getPublicUrl: () => ({ data: { publicUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' } }),
-      remove: () => Promise.resolve({ error: null })
-    })
-  }
-});
-
 const SUPABASE_URL = 'https://dfffduygecpoalejrpfc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_DpFWusgFSZiedBWIMDkW6w_msH_DMyl';
 
@@ -56,7 +33,6 @@ export default function App() {
   const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', role: 'student', remember: true });
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- HỆ THỐNG THÔNG BÁO MƯỢT MÀ ---
   const [toast, setToast] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
 
@@ -75,7 +51,6 @@ export default function App() {
     });
   };
 
-  // 1. KIỂM TRA ĐĂNG NHẬP
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -97,7 +72,6 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. LẤY HỒ SƠ & TẢI DỮ LIỆU
   const fetchUserProfile = async (userId) => {
     const { data } = await supabase.from('edu_users').select('*').eq('id', userId).single();
     if (data) {
@@ -116,7 +90,6 @@ export default function App() {
     supabase.from('edu_users').select('*').then(({data}) => data && setAllUsers(data));
   };
 
-  // 3. XỬ LÝ ĐĂNG NHẬP / ĐĂNG KÝ
   const handleAuth = async () => {
     if (!authForm.email || !authForm.password) return showToast('Vui lòng điền đủ Email và Mật khẩu!', 'error');
     setIsLoading(true);
@@ -201,7 +174,6 @@ export default function App() {
         {currentView === 'exam_result' && <ExamResult exam={selectedExam} results={selectedExam.results} navigate={navigate} currentUser={currentUser} />}
       </main>
 
-      {/* DẤU ẤN NHÀ PHÁT TRIỂN (BÊN TRONG ỨNG DỤNG) */}
       <footer className="py-6 text-center text-sm font-bold text-gray-400 no-print border-t border-gray-200 mt-auto bg-gray-50/80">
         <p>
           Được thiết kế và phát triển bởi <span className="text-black font-black hover:underline cursor-pointer transition-colors" title="Nhà phát triển hệ thống">TÊN CỦA BẠN</span>
@@ -227,7 +199,6 @@ export default function App() {
   );
 }
 
-// ================= COMPONENT TIỆN ÍCH =================
 function Toast({ toast }) {
   if (!toast) return null;
   const bgColors = { success: 'bg-black text-white', error: 'bg-white border-2 border-red-500 text-red-600', info: 'bg-white border-2 border-blue-500 text-blue-600' };
@@ -255,17 +226,12 @@ function ConfirmModal({ confirmDialog, setConfirmDialog }) {
   );
 }
 
-// ================= CÁC COMPONENT GIAO DIỆN CON =================
-
 function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollments, navigate, supabase, showToast, showConfirm, results, exams, allUsers }) {
   const [joinCode, setJoinCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [showCreateClass, setShowCreateClass] = useState(false);
   const [newClassName, setNewClassName] = useState('');
 
-  // ----------------------------------------------------
-  // DỮ LIỆU THỐNG KÊ MINIMALISM (DÀNH CHO HỌC SINH)
-  // ----------------------------------------------------
   const myResults = results?.filter(r => r.student_id === currentUser.id) || [];
   const totalExamsTaken = myResults.length;
   const avgScore = totalExamsTaken > 0 
@@ -284,9 +250,6 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
   const topStudents = studentStats.slice(0, 5);
   const chartData = myResults.slice(-10);
 
-  // ----------------------------------------------------
-  // DỮ LIỆU THỐNG KÊ MINIMALISM (DÀNH CHO GIÁO VIÊN)
-  // ----------------------------------------------------
   const myClasses = currentUser.role === 'teacher' 
     ? classes.filter(c => c.teacherId === currentUser.id) 
     : classes.filter(c => enrollments.some(e => e.class_id === c.id && e.student_id === currentUser.id));
@@ -315,7 +278,6 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
         className: cls?.name || 'Lớp đã xóa' 
       };
     });
-
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -379,10 +341,6 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
       )}
 
       <div className="space-y-8 page-transition">
-        
-        {/* ==================================================== */}
-        {/* BẢNG TỔNG KẾT VÀ THỐNG KÊ (DÀNH CHO HỌC SINH) */}
-        {/* ==================================================== */}
         {currentUser.role === 'student' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -462,10 +420,6 @@ function Dashboard({ currentUser, classes, setClasses, enrollments, setEnrollmen
           </div>
         )}
 
-
-        {/* ==================================================== */}
-        {/* BẢNG TIN DÀNH RIÊNG CHO GIÁO VIÊN (MINIMALISM) */}
-        {/* ==================================================== */}
         {currentUser.role === 'teacher' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -603,10 +557,8 @@ function ClassDetail({ currentUser, cls, classes, setClasses, exams, enrollments
   const [extendingExam, setExtendingExam] = useState(null); 
   const [newDeadline, setNewDeadline] = useState(''); 
 
-  // Đồng bộ dữ liệu lớp học trực tiếp từ danh sách tổng
   const currentCls = classes.find(c => c.id === cls.id) || cls;
 
-  // Trạng thái Bảng thông báo
   const [isEditingAnnouncement, setIsEditingAnnouncement] = useState(false);
   const [announcementText, setAnnouncementText] = useState(currentCls.announcement || '');
 
@@ -649,7 +601,6 @@ function ClassDetail({ currentUser, cls, classes, setClasses, exams, enrollments
     });
   };
 
-  // Xử lý lưu thông báo
   const handleSaveAnnouncement = async () => {
     await supabase.from('edu_classes').update({ announcement: announcementText }).eq('id', currentCls.id);
     setClasses(classes.map(c => c.id === currentCls.id ? { ...c, announcement: announcementText } : c));
@@ -698,7 +649,6 @@ function ClassDetail({ currentUser, cls, classes, setClasses, exams, enrollments
           </div>
         </div>
 
-        {/* BẢNG THÔNG BÁO GHIM TỐI GIẢN */}
         {(currentUser.role === 'teacher' || currentCls.announcement) && (
           <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm no-print relative overflow-hidden group hover:shadow-md transition-shadow">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-black"></div>
@@ -1477,7 +1427,6 @@ function AuthScreen({ authMode, setAuthMode, authForm, setAuthForm, handleAuth }
         </div>
       </div>
 
-      {/* DẤU ẤN NHÀ PHÁT TRIỂN Ở TRANG ĐĂNG NHẬP */}
       <div className="absolute bottom-8 text-center text-sm font-bold text-gray-400 animate-fade-in-down">
         Phát triển bởi <span className="text-gray-800 font-black hover:underline cursor-pointer">TÊN CỦA BẠN</span>
       </div>
